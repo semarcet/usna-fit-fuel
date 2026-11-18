@@ -1,0 +1,3685 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="USNA Fit & Fuel" />
+  <meta name="theme-color" content="#0A1128" />
+  <title>USNA Fit & Fuel — Midshipman Performance & Nutrition</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono for Tactical Readouts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            navy: {
+              950: '#060B19',
+              900: '#0A1128',
+              800: '#121E3F',
+              700: '#1B2B56',
+              600: '#273C75',
+            },
+            gold: {
+              500: '#F5B700',
+              400: '#FFCC33',
+              600: '#D49B00',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- React 18 & Babel Standalone via CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Lucide Icons Reference CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+    html, body {
+      overflow-x: hidden;
+      width: 100%;
+      overscroll-behavior-y: none;
+    }
+    /* Safe area insets for iPhone Notch & Home Indicator */
+    .pt-safe {
+      padding-top: max(0.75rem, env(safe-area-inset-top));
+    }
+    .pb-safe-nav {
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+    .bottom-safe-timer {
+      bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 9999px;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    @keyframes pulseGold {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 183, 0, 0.5); }
+      50% { box-shadow: 0 0 0 10px rgba(245, 183, 0, 0); }
+    }
+    .animate-pulse-gold {
+      animation: pulseGold 2s infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 dark:bg-navy-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-gold-500 selection:text-navy-950 transition-colors duration-200">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+    // ============================================================================
+    // 1. PURE REACT LUCIDE ICON ENGINE (Zero Virtual-DOM Conflicts)
+    // ============================================================================
+    const Icon = ({ name, size = 20, className = "" }) => {
+      const paths = {
+        dumbbell: (
+          <>
+            <path d="m6.5 6.5 11 11" />
+            <path d="m21 21-1-1" />
+            <path d="m3 3 1 1" />
+            <path d="m18 22 4-4" />
+            <path d="m2 6 4-4" />
+            <path d="m3 10 7-7" />
+            <path d="m14 21 7-7" />
+          </>
+        ),
+        utensils: (
+          <>
+            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+            <path d="M7 2v20" />
+            <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+          </>
+        ),
+        bot: (
+          <>
+            <path d="M12 8V4H8" />
+            <rect width="16" height="12" x="4" y="8" rx="2" />
+            <path d="M2 14h2" />
+            <path d="M20 14h2" />
+            <path d="M15 13v2" />
+            <path d="M9 13v2" />
+          </>
+        ),
+        trendingUp: (
+          <>
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+            <polyline points="16 7 22 7 22 13" />
+          </>
+        ),
+        settings: (
+          <>
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="3" />
+          </>
+        ),
+        timer: (
+          <>
+            <line x1="10" x2="14" y1="2" y2="2" />
+            <line x1="12" x2="15" y1="14" y2="11" />
+            <circle cx="12" cy="14" r="8" />
+          </>
+        ),
+        play: <polygon points="6 3 20 12 6 21 6 3" />,
+        pause: (
+          <>
+            <rect x="14" y="4" width="4" height="16" rx="1" />
+            <rect x="6" y="4" width="4" height="16" rx="1" />
+          </>
+        ),
+        rotateCcw: (
+          <>
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </>
+        ),
+        check: <polyline points="20 6 9 17 4 12" />,
+        plus: (
+          <>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </>
+        ),
+        minus: <line x1="5" y1="12" x2="19" y2="12" />,
+        trash: (
+          <>
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          </>
+        ),
+        copy: (
+          <>
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </>
+        ),
+        chevronUp: <polyline points="18 15 12 9 6 15" />,
+        chevronDown: <polyline points="6 9 12 15 18 9" />,
+        sun: (
+          <>
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2" /><path d="M12 20v2" />
+            <path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" />
+            <path d="M2 12h2" /><path d="M20 12h2" />
+            <path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />
+          </>
+        ),
+        moon: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />,
+        anchor: (
+          <>
+            <circle cx="12" cy="5" r="3" />
+            <line x1="12" y1="22" x2="12" y2="8" />
+            <path d="M5 12H2a10 10 0 0 0 20 0h-3" />
+          </>
+        ),
+        flame: (
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+        ),
+        award: (
+          <>
+            <circle cx="12" cy="8" r="6" />
+            <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+          </>
+        ),
+        cloud: (
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+        ),
+        download: (
+          <>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" x2="12" y1="15" y2="3" />
+          </>
+        ),
+        upload: (
+          <>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" x2="12" y1="3" y2="15" />
+          </>
+        ),
+        send: (
+          <>
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </>
+        ),
+        sparkles: (
+          <>
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+            <path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" />
+          </>
+        ),
+        search: (
+          <>
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </>
+        ),
+        bell: (
+          <>
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+          </>
+        ),
+        save: (
+          <>
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </>
+        ),
+        x: (
+          <>
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </>
+        ),
+        activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />,
+        droplet: <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />,
+        zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      };
+
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`inline-block shrink-0 ${className}`}
+        >
+          {paths[name] || paths.activity}
+        </svg>
+      );
+    };
+
+    // ============================================================================
+    // 2. PRE-LOADED USNA MIDSHIPMAN TEMPLATES & KING HALL NUTRITION DATA
+    // ============================================================================
+    const getTodayISO = () => new Date().toISOString().split('T')[0];
+
+    const INITIAL_ROUTINES = [
+      {
+        id: 'routine-push',
+        name: 'Monday: Push',
+        subtitle: 'Chest, Shoulders & Triceps (Hypertrophy + Strength)',
+        defaultRestSeconds: 120,
+        exercises: [
+          {
+            id: 'ex-bench',
+            name: 'Barbell Bench Press',
+            targetSets: 4,
+            repRange: '5–8',
+            minReps: 5,
+            maxReps: 8,
+            previousBest: { weight: 115, reps: 8 },
+            sets: [
+              { id: 's1', weight: '115', reps: '8', completed: false },
+              { id: 's2', weight: '115', reps: '8', completed: false },
+              { id: 's3', weight: '115', reps: '7', completed: false },
+              { id: 's4', weight: '115', reps: '6', completed: false },
+            ]
+          },
+          {
+            id: 'ex-incline-db',
+            name: 'Incline Dumbbell Press',
+            targetSets: 3,
+            repRange: '8–10',
+            minReps: 8,
+            maxReps: 10,
+            previousBest: { weight: 50, reps: 10 },
+            sets: [
+              { id: 's1', weight: '50', reps: '10', completed: false },
+              { id: 's2', weight: '50', reps: '10', completed: false },
+              { id: 's3', weight: '50', reps: '9', completed: false },
+            ]
+          },
+          {
+            id: 'ex-arnold',
+            name: 'Dumbbell Arnold Press',
+            targetSets: 3,
+            repRange: '8–12',
+            minReps: 8,
+            maxReps: 12,
+            previousBest: { weight: 35, reps: 10 },
+            sets: [
+              { id: 's1', weight: '35', reps: '10', completed: false },
+              { id: 's2', weight: '35', reps: '10', completed: false },
+              { id: 's3', weight: '35', reps: '9', completed: false },
+            ]
+          },
+          {
+            id: 'ex-lat-raise',
+            name: 'Cable Lateral Raise',
+            targetSets: 3,
+            repRange: '12–15',
+            minReps: 12,
+            maxReps: 15,
+            previousBest: { weight: 15, reps: 14 },
+            sets: [
+              { id: 's1', weight: '15', reps: '14', completed: false },
+              { id: 's2', weight: '15', reps: '14', completed: false },
+              { id: 's3', weight: '15', reps: '12', completed: false },
+            ]
+          },
+          {
+            id: 'ex-triceps',
+            name: 'Cable Triceps Pushdown + Overhead Ext',
+            targetSets: 3,
+            repRange: '10–12',
+            minReps: 10,
+            maxReps: 12,
+            previousBest: { weight: 50, reps: 12 },
+            sets: [
+              { id: 's1', weight: '50', reps: '12', completed: false },
+              { id: 's2', weight: '50', reps: '11', completed: false },
+              { id: 's3', weight: '50', reps: '10', completed: false },
+            ]
+          }
+        ]
+      },
+      {
+        id: 'routine-legs',
+        name: 'Wednesday: Legs',
+        subtitle: 'Quads, Hamstrings, Calves & Core (Run-Resilient)',
+        defaultRestSeconds: 150,
+        exercises: [
+          {
+            id: 'ex-squat',
+            name: 'Barbell Back Squat',
+            targetSets: 3,
+            repRange: '5–8',
+            minReps: 5,
+            maxReps: 8,
+            previousBest: { weight: 165, reps: 6 },
+            sets: [
+              { id: 's1', weight: '165', reps: '6', completed: false },
+              { id: 's2', weight: '165', reps: '6', completed: false },
+              { id: 's3', weight: '165', reps: '6', completed: false },
+            ]
+          },
+          {
+            id: 'ex-rdl',
+            name: 'Barbell Romanian Deadlift',
+            targetSets: 3,
+            repRange: '8–10',
+            minReps: 8,
+            maxReps: 10,
+            previousBest: { weight: 155, reps: 9 },
+            sets: [
+              { id: 's1', weight: '155', reps: '9', completed: false },
+              { id: 's2', weight: '155', reps: '9', completed: false },
+              { id: 's3', weight: '155', reps: '8', completed: false },
+            ]
+          },
+          {
+            id: 'ex-bss',
+            name: 'Bulgarian Split Squat (per leg)',
+            targetSets: 3,
+            repRange: '8–10',
+            minReps: 8,
+            maxReps: 10,
+            previousBest: { weight: 40, reps: 9 },
+            sets: [
+              { id: 's1', weight: '40', reps: '9', completed: false },
+              { id: 's2', weight: '40', reps: '9', completed: false },
+              { id: 's3', weight: '40', reps: '8', completed: false },
+            ]
+          },
+          {
+            id: 'ex-leg-curl',
+            name: 'Seated / Lying Leg Curl',
+            targetSets: 3,
+            repRange: '10–12',
+            minReps: 10,
+            maxReps: 12,
+            previousBest: { weight: 110, reps: 11 },
+            sets: [
+              { id: 's1', weight: '110', reps: '11', completed: false },
+              { id: 's2', weight: '110', reps: '11', completed: false },
+              { id: 's3', weight: '110', reps: '10', completed: false },
+            ]
+          },
+          {
+            id: 'ex-calf-core',
+            name: 'Standing Calf Raise + Hanging Leg Raise',
+            targetSets: 3,
+            repRange: '12–15',
+            minReps: 12,
+            maxReps: 15,
+            previousBest: { weight: 135, reps: 15 },
+            sets: [
+              { id: 's1', weight: '135', reps: '15', completed: false },
+              { id: 's2', weight: '135', reps: '15', completed: false },
+              { id: 's3', weight: '135', reps: '14', completed: false },
+            ]
+          }
+        ]
+      },
+      {
+        id: 'routine-pull',
+        name: 'Friday: Pull',
+        subtitle: 'Back Width, Thickness, Rear Delts & Biceps',
+        defaultRestSeconds: 120,
+        exercises: [
+          {
+            id: 'ex-pullups',
+            name: 'Weighted Pull-Ups',
+            targetSets: 3,
+            repRange: '6–8',
+            minReps: 6,
+            maxReps: 8,
+            previousBest: { weight: 25, reps: 7 },
+            sets: [
+              { id: 's1', weight: '25', reps: '7', completed: false },
+              { id: 's2', weight: '25', reps: '7', completed: false },
+              { id: 's3', weight: '25', reps: '6', completed: false },
+            ]
+          },
+          {
+            id: 'ex-db-row',
+            name: 'Chest-Supported Dumbbell Row',
+            targetSets: 3,
+            repRange: '8–10',
+            minReps: 8,
+            maxReps: 10,
+            previousBest: { weight: 70, reps: 10 },
+            sets: [
+              { id: 's1', weight: '70', reps: '10', completed: false },
+              { id: 's2', weight: '70', reps: '10', completed: false },
+              { id: 's3', weight: '70', reps: '9', completed: false },
+            ]
+          },
+          {
+            id: 'ex-cable-row',
+            name: 'Seated Cable Row or Lat Pulldown',
+            targetSets: 3,
+            repRange: '10–12',
+            minReps: 10,
+            maxReps: 12,
+            previousBest: { weight: 130, reps: 11 },
+            sets: [
+              { id: 's1', weight: '130', reps: '11', completed: false },
+              { id: 's2', weight: '130', reps: '10', completed: false },
+              { id: 's3', weight: '130', reps: '10', completed: false },
+            ]
+          },
+          {
+            id: 'ex-face-pull',
+            name: 'Cable Face Pulls',
+            targetSets: 3,
+            repRange: '12–15',
+            minReps: 12,
+            maxReps: 15,
+            previousBest: { weight: 45, reps: 15 },
+            sets: [
+              { id: 's1', weight: '45', reps: '15', completed: false },
+              { id: 's2', weight: '45', reps: '15', completed: false },
+              { id: 's3', weight: '45', reps: '14', completed: false },
+            ]
+          },
+          {
+            id: 'ex-biceps',
+            name: 'Dumbbell Hammer Curls + Incline Curls',
+            targetSets: 3,
+            repRange: '10–12',
+            minReps: 10,
+            maxReps: 12,
+            previousBest: { weight: 30, reps: 11 },
+            sets: [
+              { id: 's1', weight: '30', reps: '11', completed: false },
+              { id: 's2', weight: '30', reps: '11', completed: false },
+              { id: 's3', weight: '30', reps: '10', completed: false },
+            ]
+          }
+        ]
+      }
+    ];
+
+    const KING_HALL_MEAL_LIBRARY = [
+      { id: 'kh-1', name: 'King Hall Grilled Chicken Breast (2 fillets)', calories: 280, protein: 52, carbs: 0, fat: 6, category: 'King Hall' },
+      { id: 'kh-2', name: 'King Hall Roast Beef / Sirloin Steak (8 oz)', calories: 390, protein: 46, carbs: 2, fat: 21, category: 'King Hall' },
+      { id: 'kh-3', name: 'King Hall Pasta & Meat Sauce (Large Plate)', calories: 640, protein: 32, carbs: 86, fat: 18, category: 'King Hall' },
+      { id: 'kh-4', name: 'King Hall Rice / Roasted Potatoes (2 Cups)', calories: 410, protein: 9, carbs: 88, fat: 3, category: 'King Hall' },
+      { id: 'kh-5', name: 'Breakfast Eggs (3 Whole) & Oatmeal Bowl', calories: 520, protein: 28, carbs: 56, fat: 20, category: 'King Hall' },
+      { id: 'kh-6', name: 'Raisin Bran (2 Cups) + Whole Milk', calories: 470, protein: 17, carbs: 88, fat: 8, category: 'King Hall' },
+      { id: 'kh-7', name: 'Honey Pre-Run Fuel (2 tbsp)', calories: 130, protein: 0, carbs: 34, fat: 0, category: 'Bancroft' },
+      { id: 'kh-8', name: 'Cashews / Macadamia Nuts (1/4 cup)', calories: 210, protein: 5, carbs: 9, fat: 18, category: 'Bancroft' },
+      { id: 'kh-9', name: 'Whey Protein Shake (2 Scoops + Milk)', calories: 340, protein: 52, carbs: 16, fat: 7, category: 'Bancroft' }
+    ];
+
+    const INITIAL_WEIGHT_HISTORY = [
+      { id: 'w-1', date: '2025-02-01', weight: 158.8, notes: 'Post-PRT baseline' },
+      { id: 'w-2', date: '2025-02-05', weight: 159.4, notes: 'Consistent 3,400 kcal' },
+      { id: 'w-3', date: '2025-02-10', weight: 159.8, notes: 'After 5-mile tempo run' },
+      { id: 'w-4', date: getTodayISO(), weight: 160.0, notes: 'Current Midshipman Baseline (5\'11")' }
+    ];
+
+    const INITIAL_WORKOUT_HISTORY = [
+      {
+        id: 'wh-sample-1',
+        date: '2025-02-12',
+        routineName: 'Monday: Push',
+        durationMinutes: 54,
+        totalVolume: 11840,
+        exercises: [
+          {
+            name: 'Barbell Bench Press',
+            sets: [
+              { weight: 115, reps: 8 },
+              { weight: 115, reps: 8 },
+              { weight: 115, reps: 7 },
+              { weight: 115, reps: 6 }
+            ]
+          },
+          {
+            name: 'Incline Dumbbell Press',
+            sets: [
+              { weight: 50, reps: 10 },
+              { weight: 50, reps: 10 },
+              { weight: 50, reps: 9 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'wh-sample-2',
+        date: '2025-02-14',
+        routineName: 'Friday: Pull',
+        durationMinutes: 51,
+        totalVolume: 10920,
+        exercises: [
+          {
+            name: 'Weighted Pull-Ups',
+            sets: [
+              { weight: 25, reps: 7 },
+              { weight: 25, reps: 7 },
+              { weight: 25, reps: 6 }
+            ]
+          },
+          {
+            name: 'Chest-Supported Dumbbell Row',
+            sets: [
+              { weight: 70, reps: 10 },
+              { weight: 70, reps: 10 },
+              { weight: 70, reps: 9 }
+            ]
+          },
+          {
+            name: 'Dumbbell Hammer Curls + Incline Curls',
+            sets: [
+              { weight: 30, reps: 11 },
+              { weight: 30, reps: 11 },
+              { weight: 30, reps: 10 }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const createDraftFromRoutine = (routine) => ({
+      routineId: routine.id,
+      routineName: routine.name,
+      subtitle: routine.subtitle || '',
+      startedAt: Date.now(),
+      lastSavedAt: Date.now(),
+      hasUserEdits: false,
+      exercises: routine.exercises.map(ex => ({
+        ...ex,
+        sets: ex.sets.map(s => ({ ...s, completed: false }))
+      }))
+    });
+
+    const STORAGE_KEY = 'usna_fit_fuel_master_v1';
+    const DRAFT_STORAGE_KEY = 'usna_fit_fuel_active_draft_v1';
+    const TIMER_STORAGE_KEY = 'usna_fit_fuel_rest_timer_v1';
+
+    // ============================================================================
+    // 3. WEB AUDIO API ENGINE (iOS Background-Safe Scheduled Chime)
+    // ============================================================================
+    const audioEngine = {
+      ctx: null,
+      scheduledNodes: [],
+
+      unlock() {
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return null;
+          if (!this.ctx) {
+            this.ctx = new AudioCtx();
+          }
+          if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+          // Play silent micro-buffer to unlock iOS Safari audio hardware
+          const buffer = this.ctx.createBuffer(1, 1, 22050);
+          const source = this.ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(this.ctx.destination);
+          source.start(0);
+          return this.ctx;
+        } catch (e) {
+          return null;
+        }
+      },
+
+      cancelScheduled() {
+        this.scheduledNodes.forEach(node => {
+          try {
+            node.stop();
+            node.disconnect();
+          } catch (e) {}
+        });
+        this.scheduledNodes = [];
+      },
+
+      scheduleChimeInSeconds(secondsFromNow) {
+        try {
+          const ctx = this.unlock();
+          if (!ctx) return;
+          this.cancelScheduled();
+
+          const delay = Math.max(0.05, secondsFromNow);
+          const startTime = ctx.currentTime + delay;
+
+          // Tactical 3-tone Navy Boatswain / Gym Bell Chime (A5 -> C#6 -> E6)
+          const freqs = [880, 1108.73, 1318.51];
+          freqs.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, startTime + idx * 0.16);
+
+            gain.gain.setValueAtTime(0.0001, startTime + idx * 0.16);
+            gain.gain.exponentialRampToValueAtTime(0.35, startTime + idx * 0.16 + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + idx * 0.16 + 0.45);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(startTime + idx * 0.16);
+            osc.stop(startTime + idx * 0.16 + 0.48);
+            this.scheduledNodes.push(osc);
+          });
+        } catch (e) {}
+      },
+
+      playImmediateChime() {
+        this.scheduleChimeInSeconds(0.02);
+      }
+    };
+
+    // ============================================================================
+    // 4. MAIN APPLICATION COMPONENT
+    // ============================================================================
+    function App() {
+      // Load persisted master state
+      const loadInitialState = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return parsed;
+          }
+        } catch (e) {}
+        return null;
+      };
+
+      const savedState = useMemo(() => loadInitialState(), []);
+
+      // Navigation & Theme
+      const [activeTab, setActiveTab] = useState('workout');
+      const [darkMode, setDarkMode] = useState(savedState?.darkMode ?? true);
+
+      // Toast Notification & Custom Modal State
+      const [toast, setToast] = useState(null);
+      const [confirmModal, setConfirmModal] = useState(null);
+
+      const showToast = useCallback((message, type = 'gold') => {
+        setToast({ id: Date.now(), message, type });
+      }, []);
+
+      useEffect(() => {
+        if (!toast) return;
+        const t = setTimeout(() => setToast(null), 3800);
+        return () => clearTimeout(t);
+      }, [toast]);
+
+      // Apply dark mode class to <html>
+      useEffect(() => {
+        const root = document.documentElement;
+        if (darkMode) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      }, [darkMode]);
+
+      // --------------------------------------------------------------------------
+      // CORE DATA STATES
+      // --------------------------------------------------------------------------
+      const [routines, setRoutines] = useState(() => savedState?.routines || INITIAL_ROUTINES);
+      const [workoutHistory, setWorkoutHistory] = useState(() => savedState?.workoutHistory || INITIAL_WORKOUT_HISTORY);
+      const [weightHistory, setWeightHistory] = useState(() => savedState?.weightHistory || INITIAL_WEIGHT_HISTORY);
+
+      // Active Workout Draft (Instant Keystroke & Checkbox Auto-Save)
+      const [activeWorkoutDraft, setActiveWorkoutDraft] = useState(() => {
+        try {
+          const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+          if (savedDraft) {
+            return JSON.parse(savedDraft);
+          }
+        } catch (e) {}
+        if (savedState?.activeWorkoutDraft) return savedState.activeWorkoutDraft;
+        return createDraftFromRoutine(INITIAL_ROUTINES[0]);
+      });
+
+      // Workout Elapsed Seconds Counter (based on activeWorkoutDraft.startedAt)
+      const [workoutElapsedSeconds, setWorkoutElapsedSeconds] = useState(0);
+
+      useEffect(() => {
+        const updateElapsed = () => {
+          if (activeWorkoutDraft?.startedAt) {
+            const diff = Math.max(0, Math.floor((Date.now() - activeWorkoutDraft.startedAt) / 1000));
+            setWorkoutElapsedSeconds(diff);
+          }
+        };
+        updateElapsed();
+        const interval = setInterval(updateElapsed, 1000);
+        return () => clearInterval(interval);
+      }, [activeWorkoutDraft?.startedAt]);
+
+      // Nutrition & Daily Habits
+      const [macroTargets, setMacroTargets] = useState(() => savedState?.macroTargets || {
+        calories: 3400,
+        protein: 155,
+        carbs: 450,
+        fat: 90
+      });
+      const [mealLibrary, setMealLibrary] = useState(() => savedState?.mealLibrary || KING_HALL_MEAL_LIBRARY);
+      const [dailyNutritionLogs, setDailyNutritionLogs] = useState(() => savedState?.dailyNutritionLogs || {
+        [getTodayISO()]: {
+          meals: [
+            { id: 'm-init-1', name: 'Breakfast Eggs (3 Whole) & Oatmeal Bowl', calories: 520, protein: 28, carbs: 56, fat: 20, time: '07:10 AM', servings: 1 },
+            { id: 'm-init-2', name: 'Honey Pre-Run Fuel (2 tbsp)', calories: 130, protein: 0, carbs: 34, fat: 0, time: '06:00 AM', servings: 1 }
+          ],
+          habits: {
+            creatine: true,
+            hydration: false,
+            run: false
+          }
+        }
+      });
+
+      // Settings & Cloud Sync Configuration
+      const [settings, setSettings] = useState(() => savedState?.settings || {
+        geminiApiKey: '',
+        geminiModel: 'gemini-4-hydrogen',
+        supabaseUrl: '',
+        supabaseAnonKey: '',
+        syncUserId: 'midn-usna-2026',
+        autoSync: false,
+        lastSyncedAt: null
+      });
+
+      // Coach AI Chat History
+      const [chatMessages, setChatMessages] = useState(() => savedState?.chatMessages || [
+        {
+          id: 'welcome-msg',
+          role: 'assistant',
+          content: "Beat Army! Welcome to USNA Fit & Fuel. I'm tracking your 5'11\", 160 lb lean-bulk protocol (3,400 kcal target while running 20–25 miles/week). Ask me to log King Hall meals, check off your daily creatine or 5-mile run, or adjust your Push/Pull/Legs weights!",
+          actionsExecuted: []
+        }
+      ]);
+
+      // --------------------------------------------------------------------------
+      // INSTant AUTO-SAVE OF DRAFT & MASTER STATE TO LOCALSTORAGE
+      // --------------------------------------------------------------------------
+      useEffect(() => {
+        try {
+          localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(activeWorkoutDraft));
+        } catch (e) {}
+      }, [activeWorkoutDraft]);
+
+      useEffect(() => {
+        try {
+          const masterPayload = {
+            darkMode,
+            routines,
+            workoutHistory,
+            weightHistory,
+            activeWorkoutDraft,
+            macroTargets,
+            mealLibrary,
+            dailyNutritionLogs,
+            settings,
+            chatMessages,
+            updatedAt: Date.now()
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(masterPayload));
+        } catch (e) {}
+      }, [
+        darkMode,
+        routines,
+        workoutHistory,
+        weightHistory,
+        activeWorkoutDraft,
+        macroTargets,
+        mealLibrary,
+        dailyNutritionLogs,
+        settings,
+        chatMessages
+      ]);
+
+      // --------------------------------------------------------------------------
+      // 5. iOS BACKGROUND-SAFE FLOATING REST TIMER ENGINE
+      // --------------------------------------------------------------------------
+      const loadSavedTimer = () => {
+        try {
+          const raw = localStorage.getItem(TIMER_STORAGE_KEY);
+          if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return {
+          status: 'idle', // 'idle' | 'running' | 'paused' | 'completed'
+          totalDuration: 90,
+          timerEndTimestamp: null,
+          pausedRemaining: 90,
+          label: 'Rest Timer'
+        };
+      };
+
+      const [timerState, setTimerState] = useState(loadSavedTimer);
+      const [displaySeconds, setDisplaySeconds] = useState(() => {
+        const init = loadSavedTimer();
+        if (init.status === 'running' && init.timerEndTimestamp) {
+          return Math.max(0, Math.ceil((init.timerEndTimestamp - Date.now()) / 1000));
+        }
+        return init.pausedRemaining || init.totalDuration || 90;
+      });
+
+      // Persist timerState to localStorage immediately
+      useEffect(() => {
+        try {
+          localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(timerState));
+        } catch (e) {}
+      }, [timerState]);
+
+      // Trigger browser notification if permitted
+      const notifyTimerFinished = useCallback((exerciseLabel) => {
+        audioEngine.playImmediateChime();
+        showToast(`⏱️ Rest Complete! Ready for next set (${exerciseLabel || 'Go!'})`, 'emerald');
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification('USNA Fit & Fuel — Rest Complete!', {
+              body: `Time to hit your next set of ${exerciseLabel || 'your workout'}.`,
+              silent: false
+            });
+          } catch (e) {}
+        }
+      }, [showToast]);
+
+      // Core epoch timestamp sync function (runs on tick + visibilitychange + focus)
+      const syncTimerWithClock = useCallback(() => {
+        setTimerState(prev => {
+          if (prev.status !== 'running' || !prev.timerEndTimestamp) {
+            return prev;
+          }
+          const remaining = Math.max(0, Math.ceil((prev.timerEndTimestamp - Date.now()) / 1000));
+          setDisplaySeconds(remaining);
+
+          if (remaining <= 0) {
+            notifyTimerFinished(prev.label);
+            return {
+              ...prev,
+              status: 'completed',
+              timerEndTimestamp: null,
+              pausedRemaining: 0
+            };
+          }
+          return prev;
+        });
+      }, [notifyTimerFinished]);
+
+      useEffect(() => {
+        if (timerState.status === 'running') {
+          syncTimerWithClock();
+          const interval = setInterval(syncTimerWithClock, 250);
+          return () => clearInterval(interval);
+        } else if (timerState.status === 'paused' || timerState.status === 'idle') {
+          setDisplaySeconds(timerState.pausedRemaining ?? timerState.totalDuration);
+        } else if (timerState.status === 'completed') {
+          setDisplaySeconds(0);
+        }
+      }, [timerState.status, timerState.timerEndTimestamp, timerState.pausedRemaining, timerState.totalDuration, syncTimerWithClock]);
+
+      // Listen for iOS Safari returning from background or lock screen
+      useEffect(() => {
+        const handleVisibilityOrFocus = () => {
+          if (document.visibilityState === 'visible') {
+            syncTimerWithClock();
+          }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+        window.addEventListener('focus', handleVisibilityOrFocus);
+        window.addEventListener('pageshow', handleVisibilityOrFocus);
+        return () => {
+          document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+          window.removeEventListener('focus', handleVisibilityOrFocus);
+          window.removeEventListener('pageshow', handleVisibilityOrFocus);
+        };
+      }, [syncTimerWithClock]);
+
+      // Timer Control Actions
+      const startRestTimer = useCallback((durationSec, label = 'Rest Period') => {
+        const cleanDuration = Math.max(5, Number(durationSec) || 90);
+        const endTs = Date.now() + cleanDuration * 1000;
+        audioEngine.scheduleChimeInSeconds(cleanDuration);
+
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission().catch(() => {});
+        }
+
+        setDisplaySeconds(cleanDuration);
+        setTimerState({
+          status: 'running',
+          totalDuration: cleanDuration,
+          timerEndTimestamp: endTs,
+          pausedRemaining: cleanDuration,
+          label
+        });
+      }, []);
+
+      const pauseOrResumeTimer = () => {
+        audioEngine.unlock();
+        if (timerState.status === 'running') {
+          const remaining = Math.max(1, Math.ceil((timerState.timerEndTimestamp - Date.now()) / 1000));
+          audioEngine.cancelScheduled();
+          setDisplaySeconds(remaining);
+          setTimerState(prev => ({
+            ...prev,
+            status: 'paused',
+            timerEndTimestamp: null,
+            pausedRemaining: remaining
+          }));
+        } else if (timerState.status === 'paused') {
+          const rem = timerState.pausedRemaining || timerState.totalDuration || 90;
+          const endTs = Date.now() + rem * 1000;
+          audioEngine.scheduleChimeInSeconds(rem);
+          setTimerState(prev => ({
+            ...prev,
+            status: 'running',
+            timerEndTimestamp: endTs
+          }));
+        } else {
+          startRestTimer(timerState.totalDuration || 90, timerState.label);
+        }
+      };
+
+      const adjustTimerSeconds = (deltaSeconds) => {
+        audioEngine.unlock();
+        if (timerState.status === 'running' && timerState.timerEndTimestamp) {
+          const currentRem = Math.max(0, Math.ceil((timerState.timerEndTimestamp - Date.now()) / 1000));
+          const nextRem = Math.max(5, currentRem + deltaSeconds);
+          const newEndTs = Date.now() + nextRem * 1000;
+          audioEngine.scheduleChimeInSeconds(nextRem);
+          setDisplaySeconds(nextRem);
+          setTimerState(prev => ({
+            ...prev,
+            totalDuration: Math.max(prev.totalDuration, nextRem),
+            timerEndTimestamp: newEndTs,
+            pausedRemaining: nextRem
+          }));
+        } else {
+          const base = timerState.pausedRemaining || timerState.totalDuration || 90;
+          const nextRem = Math.max(15, base + deltaSeconds);
+          setDisplaySeconds(nextRem);
+          setTimerState(prev => ({
+            ...prev,
+            status: prev.status === 'completed' ? 'idle' : prev.status,
+            totalDuration: nextRem,
+            pausedRemaining: nextRem
+          }));
+        }
+      };
+
+      const resetTimer = () => {
+        audioEngine.cancelScheduled();
+        const def = timerState.totalDuration || 90;
+        setDisplaySeconds(def);
+        setTimerState(prev => ({
+          ...prev,
+          status: 'idle',
+          timerEndTimestamp: null,
+          pausedRemaining: def
+        }));
+      };
+
+      // --------------------------------------------------------------------------
+      // 6. WORKOUT DRAFT MUTATION HANDLERS (INSTANT AUTO-SAVE)
+      // --------------------------------------------------------------------------
+      const switchActiveRoutine = (routineId) => {
+        const targetRoutine = routines.find(r => r.id === routineId);
+        if (!targetRoutine) return;
+
+        // If user has active checked sets or edits, confirm before overwriting draft
+        const hasCheckedSets = activeWorkoutDraft.exercises.some(ex => ex.sets.some(s => s.completed));
+        if (hasCheckedSets && activeWorkoutDraft.routineId !== routineId) {
+          setConfirmModal({
+            title: 'Switch Active Routine?',
+            message: `You have an in-progress draft for "${activeWorkoutDraft.routineName}". Switching to "${targetRoutine.name}" will start a fresh draft for that routine.`,
+            confirmText: 'Switch Routine',
+            onConfirm: () => {
+              setActiveWorkoutDraft(createDraftFromRoutine(targetRoutine));
+              setConfirmModal(null);
+              showToast(`Loaded ${targetRoutine.name}`);
+            }
+          });
+        } else {
+          setActiveWorkoutDraft(createDraftFromRoutine(targetRoutine));
+          showToast(`Loaded ${targetRoutine.name}`);
+        }
+      };
+
+      const updateSetField = (exerciseId, setId, field, value) => {
+        setActiveWorkoutDraft(prev => ({
+          ...prev,
+          lastSavedAt: Date.now(),
+          hasUserEdits: true,
+          exercises: prev.exercises.map(ex => {
+            if (ex.id !== exerciseId) return ex;
+            return {
+              ...ex,
+              sets: ex.sets.map(s => s.id === setId ? { ...s, [field]: value } : s)
+            };
+          })
+        }));
+      };
+
+      const toggleSetCompleted = (exercise, setItem, setIndex) => {
+        const nextCompleted = !setItem.completed;
+        setActiveWorkoutDraft(prev => ({
+          ...prev,
+          lastSavedAt: Date.now(),
+          hasUserEdits: true,
+          exercises: prev.exercises.map(ex => {
+            if (ex.id !== exercise.id) return ex;
+            return {
+              ...ex,
+              sets: ex.sets.map(s => s.id === setItem.id ? { ...s, completed: nextCompleted } : s)
+            };
+          })
+        }));
+
+        // Automatically start the background-safe Rest Timer when checking off any set
+        if (nextCompleted) {
+          const currentRoutine = routines.find(r => r.id === activeWorkoutDraft.routineId);
+          const defaultRest = currentRoutine?.defaultRestSeconds || 90;
+          startRestTimer(defaultRest, `${exercise.name} (Set ${setIndex + 1})`);
+        }
+      };
+
+      const copyPreviousBestToExercise = (exerciseId) => {
+        setActiveWorkoutDraft(prev => ({
+          ...prev,
+          lastSavedAt: Date.now(),
+          hasUserEdits: true,
+          exercises: prev.exercises.map(ex => {
+            if (ex.id !== exerciseId) return ex;
+            const bestW = String(ex.previousBest?.weight ?? '');
+            const bestR = String(ex.previousBest?.reps ?? '');
+            return {
+              ...ex,
+              sets: ex.sets.map(s => ({
+                ...s,
+                weight: bestW,
+                reps: bestR
+              }))
+            };
+          })
+        }));
+        showToast('Copied Previous Best weight & reps to all sets!');
+      };
+
+      const addSetToExercise = (exerciseId) => {
+        setActiveWorkoutDraft(prev => ({
+          ...prev,
+          lastSavedAt: Date.now(),
+          hasUserEdits: true,
+          exercises: prev.exercises.map(ex => {
+            if (ex.id !== exerciseId) return ex;
+            const lastSet = ex.sets[ex.sets.length - 1] || { weight: ex.previousBest?.weight || '0', reps: ex.previousBest?.reps || '8' };
+            return {
+              ...ex,
+              sets: [
+                ...ex.sets,
+                {
+                  id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  weight: String(lastSet.weight),
+                  reps: String(lastSet.reps),
+                  completed: false
+                }
+              ]
+            };
+          })
+        }));
+      };
+
+      const removeSetFromExercise = (exerciseId, setId) => {
+        setActiveWorkoutDraft(prev => ({
+          ...prev,
+          lastSavedAt: Date.now(),
+          hasUserEdits: true,
+          exercises: prev.exercises.map(ex => {
+            if (ex.id !== exerciseId || ex.sets.length <= 1) return ex;
+            return {
+              ...ex,
+              sets: ex.sets.filter(s => s.id !== setId)
+            };
+          })
+        }));
+      };
+
+      const moveExerciseInDraft = (index, direction) => {
+        setActiveWorkoutDraft(prev => {
+          const nextIndex = index + direction;
+          if (nextIndex < 0 || nextIndex >= prev.exercises.length) return prev;
+          const copy = [...prev.exercises];
+          const [moved] = copy.splice(index, 1);
+          copy.splice(nextIndex, 0, moved);
+          return {
+            ...prev,
+            lastSavedAt: Date.now(),
+            hasUserEdits: true,
+            exercises: copy
+          };
+        });
+      };
+
+      const deleteExerciseFromDraft = (exerciseId) => {
+        setActiveWorkoutDraft(prev => ({
+          ...prev,
+          lastSavedAt: Date.now(),
+          hasUserEdits: true,
+          exercises: prev.exercises.filter(ex => ex.id !== exerciseId)
+        }));
+        showToast('Removed exercise from session');
+      };
+
+      const addExerciseToDraftAndRoutine = (name, repRange, weight, reps, setsCount = 3) => {
+        const parts = repRange.split(/[-–]/).map(n => parseInt(n, 10));
+        const minR = parts[0] || 8;
+        const maxR = parts[1] || 12;
+        const newEx = {
+          id: `ex-${Date.now()}`,
+          name: name.trim(),
+          targetSets: Number(setsCount) || 3,
+          repRange: repRange || '8–12',
+          minReps: minR,
+          maxReps: maxR,
+          previousBest: { weight: Number(weight) || 45, reps: Number(reps) || 10 },
+          sets: Array.from({ length: Number(setsCount) || 3 }, (_, idx) => ({
+            id: `s-${Date.now()}-${idx}`,
+            weight: String(weight || 45),
+            reps: String(reps || 10),
+            completed: false
+          }))
+        };
+
+        setActiveWorkoutDraft(prev => ({
+          ...prev,
+          lastSavedAt: Date.now(),
+          hasUserEdits: true,
+          exercises: [...prev.exercises, newEx]
+        }));
+
+        // Also update the matching routine template so it persists
+        setRoutines(prev => prev.map(r => {
+          if (r.id !== activeWorkoutDraft.routineId) return r;
+          return { ...r, exercises: [...r.exercises, newEx] };
+        }));
+
+        showToast(`Added "${newEx.name}" to ${activeWorkoutDraft.routineName}`);
+      };
+
+      const discardCurrentDraft = () => {
+        setConfirmModal({
+          title: 'Reset Current Workout Draft?',
+          message: 'This will clear all checked sets and reset the elapsed session timer back to 00:00.',
+          confirmText: 'Reset Draft',
+          onConfirm: () => {
+            const currentRoutine = routines.find(r => r.id === activeWorkoutDraft.routineId) || routines[0];
+            setActiveWorkoutDraft(createDraftFromRoutine(currentRoutine));
+            setConfirmModal(null);
+            showToast('Workout draft reset');
+          }
+        });
+      };
+
+      const finishAndSaveWorkout = () => {
+        // Gather completed sets (or all sets if none checked yet)
+        const anyChecked = activeWorkoutDraft.exercises.some(ex => ex.sets.some(s => s.completed));
+        const durationMinutes = Math.max(1, Math.round(workoutElapsedSeconds / 60));
+
+        let totalVolume = 0;
+        const completedExercises = [];
+        const updatedBestMap = {};
+
+        activeWorkoutDraft.exercises.forEach(ex => {
+          const validSets = ex.sets.filter(s => anyChecked ? s.completed : (Number(s.reps) > 0));
+          if (validSets.length > 0) {
+            const formattedSets = validSets.map(s => {
+              const w = parseFloat(s.weight) || 0;
+              const r = parseInt(s.reps, 10) || 0;
+              totalVolume += (w > 0 ? w : 160) * r;
+              return { weight: w, reps: r };
+            });
+
+            // Find best set from this workout
+            let bestSet = formattedSets[0];
+            formattedSets.forEach(s => {
+              if (s.weight > bestSet.weight || (s.weight === bestSet.weight && s.reps > bestSet.reps)) {
+                bestSet = s;
+              }
+            });
+
+            const prevW = ex.previousBest?.weight || 0;
+            const prevR = ex.previousBest?.reps || 0;
+            if (bestSet.weight > prevW || (bestSet.weight === prevW && bestSet.reps >= prevR)) {
+              updatedBestMap[ex.name.toLowerCase()] = { weight: bestSet.weight, reps: bestSet.reps };
+            }
+
+            completedExercises.push({
+              name: ex.name,
+              sets: formattedSets
+            });
+          }
+        });
+
+        if (completedExercises.length === 0) {
+          showToast('Log at least 1 set before saving workout!', 'amber');
+          return;
+        }
+
+        const newWorkoutRecord = {
+          id: `wh-${Date.now()}`,
+          date: getTodayISO(),
+          routineName: activeWorkoutDraft.routineName,
+          durationMinutes,
+          totalVolume: Math.round(totalVolume),
+          exercises: completedExercises
+        };
+
+        setWorkoutHistory(prev => [newWorkoutRecord, ...prev]);
+
+        // Update routines with new previousBest and latest set values
+        const updatedRoutines = routines.map(r => {
+          if (r.id !== activeWorkoutDraft.routineId) return r;
+          return {
+            ...r,
+            exercises: activeWorkoutDraft.exercises.map(ex => {
+              const newBest = updatedBestMap[ex.name.toLowerCase()] || ex.previousBest;
+              return {
+                ...ex,
+                previousBest: newBest,
+                sets: ex.sets.map(s => ({ ...s, completed: false }))
+              };
+            })
+          };
+        });
+
+        setRoutines(updatedRoutines);
+
+        // Reset active draft cleanly for next session
+        const nextTemplate = updatedRoutines.find(r => r.id === activeWorkoutDraft.routineId) || updatedRoutines[0];
+        setActiveWorkoutDraft(createDraftFromRoutine(nextTemplate));
+        resetTimer();
+        showToast(`🏆 Saved ${newWorkoutRecord.routineName}! Volume: ${newWorkoutRecord.totalVolume.toLocaleString()} lbs`, 'emerald');
+      };
+
+      // --------------------------------------------------------------------------
+      // 7. NUTRITION & HABIT HELPERS
+      // --------------------------------------------------------------------------
+      const todayISO = getTodayISO();
+      const todayLog = dailyNutritionLogs[todayISO] || {
+        meals: [],
+        habits: { creatine: false, hydration: false, run: false }
+      };
+
+      const todayTotals = useMemo(() => {
+        return todayLog.meals.reduce(
+          (acc, meal) => ({
+            calories: acc.calories + (Number(meal.calories) || 0),
+            protein: acc.protein + (Number(meal.protein) || 0),
+            carbs: acc.carbs + (Number(meal.carbs) || 0),
+            fat: acc.fat + (Number(meal.fat) || 0)
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        );
+      }, [todayLog.meals]);
+
+      const logMealItem = useCallback((item, multiplier = 1) => {
+        const mult = Number(multiplier) || 1;
+        const entry = {
+          id: `meal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: mult !== 1 ? `${item.name} (${mult}x)` : item.name,
+          calories: Math.round((Number(item.calories) || 0) * mult),
+          protein: Math.round((Number(item.protein) || 0) * mult),
+          carbs: Math.round((Number(item.carbs) || 0) * mult),
+          fat: Math.round((Number(item.fat) || 0) * mult),
+          servings: mult,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        const dKey = getTodayISO();
+        setDailyNutritionLogs(prev => {
+          const existing = prev[dKey] || { meals: [], habits: { creatine: false, hydration: false, run: false } };
+          return {
+            ...prev,
+            [dKey]: {
+              ...existing,
+              meals: [entry, ...existing.meals]
+            }
+          };
+        });
+        showToast(`+${entry.calories} kcal (${entry.protein}g P) logged!`);
+      }, [showToast]);
+
+      const removeLoggedMeal = (mealId) => {
+        const dKey = getTodayISO();
+        setDailyNutritionLogs(prev => {
+          const existing = prev[dKey];
+          if (!existing) return prev;
+          return {
+            ...prev,
+            [dKey]: {
+              ...existing,
+              meals: existing.meals.filter(m => m.id !== mealId)
+            }
+          };
+        });
+      };
+
+      const toggleDailyHabit = useCallback((habitKey, explicitValue = null) => {
+        const dKey = getTodayISO();
+        setDailyNutritionLogs(prev => {
+          const existing = prev[dKey] || { meals: [], habits: { creatine: false, hydration: false, run: false } };
+          const nextVal = explicitValue !== null ? Boolean(explicitValue) : !existing.habits[habitKey];
+          return {
+            ...prev,
+            [dKey]: {
+              ...existing,
+              habits: {
+                ...existing.habits,
+                [habitKey]: nextVal
+              }
+            }
+          };
+        });
+      }, []);
+
+      // --------------------------------------------------------------------------
+      // 8. STRUCTURED ACTION EXECUTOR FOR COACH AI (GEMINI AGENT)
+      // --------------------------------------------------------------------------
+      const executeAgentActions = useCallback((actions) => {
+        if (!Array.isArray(actions) || actions.length === 0) return [];
+        const executedBadges = [];
+
+        actions.forEach(action => {
+          if (!action || !action.type) return;
+          const type = String(action.type).toUpperCase();
+
+          if (type === 'ADD_MEAL') {
+            const mult = Number(action.servings) || 1;
+            logMealItem({
+              name: action.name || 'King Hall Meal',
+              calories: Number(action.calories) || 400,
+              protein: Number(action.protein) || 30,
+              carbs: Number(action.carbs) || 45,
+              fat: Number(action.fat) || 12
+            }, 1); // calories passed from AI are usually already total or per serving
+            executedBadges.push(`Logged Meal: ${action.name} (${action.calories} kcal, ${action.protein}g P)`);
+          }
+
+          if (type === 'LOG_WEIGHT') {
+            const w = parseFloat(action.weight);
+            if (!isNaN(w) && w > 80 && w < 350) {
+              const dateStr = action.date || getTodayISO();
+              setWeightHistory(prev => {
+                const filtered = prev.filter(item => item.date !== dateStr);
+                return [...filtered, { id: `w-${Date.now()}`, date: dateStr, weight: w, notes: action.notes || 'Logged via Coach AI' }]
+                  .sort((a, b) => a.date.localeCompare(b.date));
+              });
+              executedBadges.push(`Logged Bodyweight: ${w.toFixed(1)} lbs`);
+            }
+          }
+
+          if (type === 'TOGGLE_HABIT') {
+            const rawHabit = String(action.habit || '').toLowerCase();
+            const key = rawHabit.includes('creat') ? 'creatine' : rawHabit.includes('hydr') || rawHabit.includes('water') ? 'hydration' : 'run';
+            const val = action.value !== undefined ? Boolean(action.value) : true;
+            toggleDailyHabit(key, val);
+            executedBadges.push(`Habit Updated: ${key.toUpperCase()} = ${val ? 'Completed' : 'Unchecked'}`);
+          }
+
+          if (type === 'UPDATE_EXERCISE_WEIGHT') {
+            const targetName = String(action.exerciseName || '').toLowerCase();
+            const delta = Number(action.weightDelta) || 0;
+            const explicitWeight = action.newWeight !== undefined ? Number(action.newWeight) : null;
+
+            // Update both routines and activeWorkoutDraft
+            setRoutines(prev => prev.map(r => ({
+              ...r,
+              exercises: r.exercises.map(ex => {
+                if (!ex.name.toLowerCase().includes(targetName) && !targetName.includes(ex.name.toLowerCase())) return ex;
+                const nextW = explicitWeight !== null ? explicitWeight : (Number(ex.previousBest?.weight) || 0) + delta;
+                const nextR = action.newReps ? Number(action.newReps) : (ex.previousBest?.reps || 8);
+                return {
+                  ...ex,
+                  previousBest: { weight: nextW, reps: nextR },
+                  sets: ex.sets.map(s => ({ ...s, weight: String(nextW), reps: String(nextR) }))
+                };
+              })
+            })));
+
+            setActiveWorkoutDraft(prev => ({
+              ...prev,
+              lastSavedAt: Date.now(),
+              exercises: prev.exercises.map(ex => {
+                if (!ex.name.toLowerCase().includes(targetName) && !targetName.includes(ex.name.toLowerCase())) return ex;
+                const nextW = explicitWeight !== null ? explicitWeight : (Number(ex.previousBest?.weight) || 0) + delta;
+                const nextR = action.newReps ? Number(action.newReps) : (ex.previousBest?.reps || 8);
+                return {
+                  ...ex,
+                  previousBest: { weight: nextW, reps: nextR },
+                  sets: ex.sets.map(s => ({ ...s, weight: String(nextW), reps: String(nextR) }))
+                };
+              })
+            }));
+
+            executedBadges.push(`Updated ${action.exerciseName}: ${explicitWeight !== null ? `${explicitWeight} lbs` : `${delta >= 0 ? '+' : ''}${delta} lbs`}`);
+          }
+
+          if (type === 'CREATE_ROUTINE' && action.name) {
+            const newRoutine = {
+              id: `routine-${Date.now()}`,
+              name: action.name,
+              subtitle: action.subtitle || 'Custom Coach AI Routine',
+              defaultRestSeconds: 90,
+              exercises: (action.exercises || []).map((ex, i) => ({
+                id: `ex-ai-${Date.now()}-${i}`,
+                name: ex.name || `Exercise ${i + 1}`,
+                targetSets: Number(ex.sets) || 3,
+                repRange: ex.repRange || '8–12',
+                minReps: 8,
+                maxReps: 12,
+                previousBest: { weight: Number(ex.weight) || 45, reps: Number(ex.reps) || 10 },
+                sets: Array.from({ length: Number(ex.sets) || 3 }, (_, sIdx) => ({
+                  id: `s-ai-${Date.now()}-${i}-${sIdx}`,
+                  weight: String(ex.weight || 45),
+                  reps: String(ex.reps || 10),
+                  completed: false
+                }))
+              }))
+            };
+            setRoutines(prev => [...prev, newRoutine]);
+            executedBadges.push(`Created Routine: ${newRoutine.name}`);
+          }
+        });
+
+        if (executedBadges.length > 0) {
+          showToast(`🤖 Coach AI executed ${executedBadges.length} update(s)!`, 'emerald');
+        }
+        return executedBadges;
+      }, [logMealItem, toggleDailyHabit, showToast]);
+
+      // --------------------------------------------------------------------------
+      // 9. SUPABASE TWO-DEVICE CLOUD SYNC ENGINE
+      // --------------------------------------------------------------------------
+      const [syncBusy, setSyncBusy] = useState(false);
+
+      const pushToSupabase = useCallback(async (silent = false) => {
+        if (!settings.supabaseUrl || !settings.supabaseAnonKey || !settings.syncUserId) {
+          if (!silent) showToast('Configure Supabase URL, Anon Key & Sync ID first', 'amber');
+          return;
+        }
+        setSyncBusy(true);
+        try {
+          const cleanUrl = settings.supabaseUrl.replace(/\/$/, '');
+          const endpoint = `${cleanUrl}/rest/v1/user_sync`;
+          const payloadSnapshot = {
+            routines,
+            workoutHistory,
+            weightHistory,
+            activeWorkoutDraft,
+            macroTargets,
+            mealLibrary,
+            dailyNutritionLogs
+          };
+
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': settings.supabaseAnonKey,
+              'Authorization': `Bearer ${settings.supabaseAnonKey}`,
+              'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify({
+              user_id: settings.syncUserId,
+              payload: payloadSnapshot,
+              updated_at: new Date().toISOString()
+            })
+          });
+
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          setSettings(prev => ({ ...prev, lastSyncedAt: new Date().toLocaleTimeString() }));
+          if (!silent) showToast('☁️ Cloud Sync: Pushed state to Supabase!', 'emerald');
+        } catch (err) {
+          if (!silent) showToast(`Supabase Push Error: ${err.message}`, 'amber');
+        } finally {
+          setSyncBusy(false);
+        }
+      }, [settings, routines, workoutHistory, weightHistory, activeWorkoutDraft, macroTargets, mealLibrary, dailyNutritionLogs, showToast]);
+
+      const pullFromSupabase = useCallback(async () => {
+        if (!settings.supabaseUrl || !settings.supabaseAnonKey || !settings.syncUserId) {
+          showToast('Configure Supabase URL, Anon Key & Sync ID first', 'amber');
+          return;
+        }
+        setSyncBusy(true);
+        try {
+          const cleanUrl = settings.supabaseUrl.replace(/\/$/, '');
+          const endpoint = `${cleanUrl}/rest/v1/user_sync?user_id=eq.${encodeURIComponent(settings.syncUserId)}&select=*`;
+          const res = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+              'apikey': settings.supabaseAnonKey,
+              'Authorization': `Bearer ${settings.supabaseAnonKey}`
+            }
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const rows = await res.json();
+          if (!rows || rows.length === 0 || !rows[0].payload) {
+            showToast('No remote cloud snapshot found for this Sync ID yet.', 'amber');
+            return;
+          }
+          const remote = rows[0].payload;
+          if (remote.routines) setRoutines(remote.routines);
+          if (remote.workoutHistory) setWorkoutHistory(remote.workoutHistory);
+          if (remote.weightHistory) setWeightHistory(remote.weightHistory);
+          if (remote.activeWorkoutDraft) setActiveWorkoutDraft(remote.activeWorkoutDraft);
+          if (remote.macroTargets) setMacroTargets(remote.macroTargets);
+          if (remote.mealLibrary) setMealLibrary(remote.mealLibrary);
+          if (remote.dailyNutritionLogs) setDailyNutritionLogs(remote.dailyNutritionLogs);
+
+          setSettings(prev => ({ ...prev, lastSyncedAt: new Date().toLocaleTimeString() }));
+          showToast('☁️ Cloud Sync: Pulled latest data from Supabase!', 'emerald');
+        } catch (err) {
+          showToast(`Supabase Pull Error: ${err.message}`, 'amber');
+        } finally {
+          setSyncBusy(false);
+        }
+      }, [settings, showToast]);
+
+      // Format seconds to MM:SS
+      const formatClock = (secs) => {
+        const s = Math.max(0, Math.floor(secs));
+        const mins = Math.floor(s / 60);
+        const rem = s % 60;
+        return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+      };
+
+      const latestWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weight : 160.0;
+
+      // Navigation Tabs Config
+      const NAV_TABS = [
+        { id: 'workout', label: 'Workout', icon: 'dumbbell' },
+        { id: 'nutrition', label: 'Nutrition', icon: 'utensils' },
+        { id: 'coach', label: 'Coach AI', icon: 'bot' },
+        { id: 'progress', label: 'Progress', icon: 'trendingUp' },
+        { id: 'settings', label: 'Sync & Settings', icon: 'settings' }
+      ];
+
+      return (
+        <div className="min-h-screen flex flex-col md:flex-row bg-slate-100 dark:bg-navy-950 text-slate-900 dark:text-slate-100">
+
+          {/* ====================================================================
+              DESKTOP SIDEBAR NAVIGATION (>= 768px)
+          ==================================================================== */}
+          <aside className="hidden md:flex md:w-64 lg:w-72 md:flex-col md:fixed md:inset-y-0 bg-navy-900 text-white border-r border-navy-700/80 z-40 select-none">
+            <div className="p-5 border-b border-navy-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gold-500 text-navy-950 flex items-center justify-center font-black shadow-lg shadow-gold-500/20">
+                  <Icon name="anchor" size={22} />
+                </div>
+                <div>
+                  <h1 className="font-extrabold tracking-tight text-base leading-none text-white">
+                    USNA <span className="text-gold-500">FIT & FUEL</span>
+                  </h1>
+                  <p className="text-[11px] font-mono text-slate-400 mt-1">
+                    5'11" • {latestWeight.toFixed(1)} LBS • 20-25 MI/WK
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Daily Status Summary in Sidebar */}
+            <div className="p-4 mx-3 mt-4 rounded-xl bg-navy-800/90 border border-navy-700">
+              <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
+                <span className="font-semibold uppercase tracking-wider text-gold-400">King Hall Fuel</span>
+                <span className="font-mono font-bold">{todayTotals.calories} / {macroTargets.calories} kcal</span>
+              </div>
+              <div className="w-full h-2 bg-navy-950 rounded-full overflow-hidden mb-3">
+                <div
+                  className="h-full bg-gradient-to-r from-gold-500 to-amber-400 transition-all duration-300"
+                  style={{ width: `${Math.min(100, (todayTotals.calories / macroTargets.calories) * 100)}%` }}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 text-center font-mono text-[11px]">
+                <div className="bg-navy-950/70 rounded-lg py-1 px-1.5">
+                  <span className="text-slate-400 block text-[9px]">PROT</span>
+                  <span className="text-emerald-400 font-bold">{todayTotals.protein}g</span>
+                </div>
+                <div className="bg-navy-950/70 rounded-lg py-1 px-1.5">
+                  <span className="text-slate-400 block text-[9px]">CARB</span>
+                  <span className="text-sky-400 font-bold">{todayTotals.carbs}g</span>
+                </div>
+                <div className="bg-navy-950/70 rounded-lg py-1 px-1.5">
+                  <span className="text-slate-400 block text-[9px]">FAT</span>
+                  <span className="text-amber-400 font-bold">{todayTotals.fat}g</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar Links */}
+            <nav className="flex-1 px-3 py-4 space-y-1.5">
+              {NAV_TABS.map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-semibold text-sm transition-all ${
+                      isActive
+                        ? 'bg-gold-500 text-navy-950 shadow-md shadow-gold-500/20 font-bold'
+                        : 'text-slate-300 hover:bg-navy-800 hover:text-white'
+                    }`}
+                  >
+                    <Icon name={tab.icon} size={20} />
+                    <span>{tab.label}</span>
+                    {tab.id === 'workout' && activeWorkoutDraft.hasUserEdits && (
+                      <span className={`ml-auto w-2 h-2 rounded-full ${isActive ? 'bg-navy-950' : 'bg-emerald-400 animate-ping'}`} />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Theme Toggle & Bancroft Footer */}
+            <div className="p-4 border-t border-navy-800 flex items-center justify-between">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-xs font-semibold text-slate-200 transition"
+              >
+                <Icon name={darkMode ? 'sun' : 'moon'} size={16} className="text-gold-400" />
+                <span>{darkMode ? 'Light Mode' : 'Tactical Dark'}</span>
+              </button>
+              <span className="text-[11px] font-mono text-slate-400">ANNAPOLIS MD</span>
+            </div>
+          </aside>
+
+          {/* ====================================================================
+              MAIN CONTENT WRAPPER
+          ==================================================================== */}
+          <div className="flex-1 md:pl-64 lg:pl-72 flex flex-col min-h-screen w-full max-w-full">
+            {/* Mobile Top Tactical Header (< 768px) */}
+            <header className="md:hidden sticky top-0 z-30 bg-navy-900/95 backdrop-blur-md text-white border-b border-navy-800 px-4 pt-safe pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gold-500 text-navy-950 flex items-center justify-center font-black">
+                    <Icon name="anchor" size={18} />
+                  </div>
+                  <div>
+                    <h1 className="font-extrabold text-sm tracking-tight leading-none">
+                      USNA <span className="text-gold-500">FIT & FUEL</span>
+                    </h1>
+                    <p className="text-[10px] font-mono text-slate-300 mt-0.5">
+                      {latestWeight.toFixed(1)} lbs • {todayTotals.calories}/{macroTargets.calories} kcal • {todayTotals.protein}g P
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDarkMode(!darkMode)}
+                    aria-label="Toggle Theme"
+                    className="p-2 rounded-lg bg-navy-800 text-gold-400 border border-navy-700 active:scale-95 transition"
+                  >
+                    <Icon name={darkMode ? 'sun' : 'moon'} size={17} />
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* Toast Notification Banner */}
+            {toast && (
+              <div className="fixed top-16 md:top-5 right-4 left-4 md:left-auto md:w-96 z-50 pointer-events-none flex justify-center md:justify-end">
+                <div className={`pointer-events-auto px-4 py-3 rounded-xl shadow-2xl border font-semibold text-xs sm:text-sm flex items-center gap-2.5 backdrop-blur-md ${
+                  toast.type === 'emerald'
+                    ? 'bg-emerald-950/95 border-emerald-500 text-emerald-200'
+                    : toast.type === 'amber'
+                    ? 'bg-amber-950/95 border-amber-500 text-amber-200'
+                    : 'bg-navy-900/95 border-gold-500 text-gold-400'
+                }`}>
+                  <Icon name="zap" size={16} />
+                  <span className="flex-1">{toast.message}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Main View Container with generous bottom padding so floating rest timer NEVER covers cards */}
+            <main className="flex-1 w-full max-w-5xl mx-auto px-3.5 sm:px-6 pt-4 pb-52 md:pb-36">
+              {activeTab === 'workout' && (
+                <WorkoutModule
+                  routines={routines}
+                  setRoutines={setRoutines}
+                  activeWorkoutDraft={activeWorkoutDraft}
+                  setActiveWorkoutDraft={setActiveWorkoutDraft}
+                  workoutElapsedSeconds={workoutElapsedSeconds}
+                  formatClock={formatClock}
+                  switchActiveRoutine={switchActiveRoutine}
+                  updateSetField={updateSetField}
+                  toggleSetCompleted={toggleSetCompleted}
+                  copyPreviousBestToExercise={copyPreviousBestToExercise}
+                  addSetToExercise={addSetToExercise}
+                  removeSetFromExercise={removeSetFromExercise}
+                  moveExerciseInDraft={moveExerciseInDraft}
+                  deleteExerciseFromDraft={deleteExerciseFromDraft}
+                  addExerciseToDraftAndRoutine={addExerciseToDraftAndRoutine}
+                  discardCurrentDraft={discardCurrentDraft}
+                  finishAndSaveWorkout={finishAndSaveWorkout}
+                  startRestTimer={startRestTimer}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'nutrition' && (
+                <NutritionModule
+                  macroTargets={macroTargets}
+                  setMacroTargets={setMacroTargets}
+                  mealLibrary={mealLibrary}
+                  setMealLibrary={setMealLibrary}
+                  todayLog={todayLog}
+                  todayTotals={todayTotals}
+                  logMealItem={logMealItem}
+                  removeLoggedMeal={removeLoggedMeal}
+                  toggleDailyHabit={toggleDailyHabit}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'coach' && (
+                <CoachAIModule
+                  chatMessages={chatMessages}
+                  setChatMessages={setChatMessages}
+                  settings={settings}
+                  setSettings={setSettings}
+                  todayTotals={todayTotals}
+                  macroTargets={macroTargets}
+                  todayLog={todayLog}
+                  activeWorkoutDraft={activeWorkoutDraft}
+                  routines={routines}
+                  workoutHistory={workoutHistory}
+                  weightHistory={weightHistory}
+                  executeAgentActions={executeAgentActions}
+                  setActiveTab={setActiveTab}
+                />
+              )}
+
+              {activeTab === 'progress' && (
+                <ProgressModule
+                  weightHistory={weightHistory}
+                  setWeightHistory={setWeightHistory}
+                  workoutHistory={workoutHistory}
+                  setWorkoutHistory={setWorkoutHistory}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'settings' && (
+                <SettingsSyncModule
+                  settings={settings}
+                  setSettings={setSettings}
+                  syncBusy={syncBusy}
+                  pushToSupabase={pushToSupabase}
+                  pullFromSupabase={pullFromSupabase}
+                  routines={routines}
+                  setRoutines={setRoutines}
+                  workoutHistory={workoutHistory}
+                  setWorkoutHistory={setWorkoutHistory}
+                  weightHistory={weightHistory}
+                  setWeightHistory={setWeightHistory}
+                  activeWorkoutDraft={activeWorkoutDraft}
+                  setActiveWorkoutDraft={setActiveWorkoutDraft}
+                  macroTargets={macroTargets}
+                  setMacroTargets={setMacroTargets}
+                  mealLibrary={mealLibrary}
+                  setMealLibrary={setMealLibrary}
+                  dailyNutritionLogs={dailyNutritionLogs}
+                  setDailyNutritionLogs={setDailyNutritionLogs}
+                  showToast={showToast}
+                />
+              )}
+            </main>
+          </div>
+
+          {/* ====================================================================
+              ALWAYS-VISIBLE FLOATING REST TIMER BAR (iOS BACKGROUND-SAFE, Z-50)
+          ==================================================================== */}
+          <div className="fixed left-2 right-2 bottom-safe-timer md:left-auto md:right-6 md:bottom-5 md:w-[430px] z-50 select-none">
+            <div className={`rounded-2xl border shadow-2xl backdrop-blur-xl transition-all duration-200 px-3.5 py-2.5 ${
+              timerState.status === 'completed'
+                ? 'bg-emerald-950/95 border-emerald-400 text-white animate-pulse-gold'
+                : timerState.status === 'running'
+                ? 'bg-navy-900/95 border-gold-500 text-white shadow-gold-500/10'
+                : 'bg-navy-900/95 dark:bg-navy-900/95 border-navy-700 text-slate-100'
+            }`}>
+              <div className="flex items-center justify-between gap-2">
+                {/* Left: Timer Countdown & Active Exercise Label */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <button
+                    onClick={pauseOrResumeTimer}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold transition active:scale-95 shrink-0 ${
+                      timerState.status === 'running'
+                        ? 'bg-gold-500 text-navy-950'
+                        : timerState.status === 'completed'
+                        ? 'bg-emerald-400 text-navy-950'
+                        : 'bg-navy-800 text-gold-400 border border-navy-600'
+                    }`}
+                    title={timerState.status === 'running' ? 'Pause Rest Timer' : 'Start / Resume Rest Timer'}
+                  >
+                    <Icon name={timerState.status === 'running' ? 'pause' : 'play'} size={18} />
+                  </button>
+
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className={`font-mono text-xl sm:text-2xl font-black tracking-tight ${
+                        timerState.status === 'running' ? 'text-gold-400' : timerState.status === 'completed' ? 'text-emerald-300' : 'text-white'
+                      }`}>
+                        {formatClock(displaySeconds)}
+                      </span>
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-navy-800 text-slate-300">
+                        {timerState.status === 'running'
+                          ? 'LIVE'
+                          : timerState.status === 'paused'
+                          ? 'PAUSED'
+                          : timerState.status === 'completed'
+                          ? 'DONE!'
+                          : 'READY'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 truncate max-w-[140px] sm:max-w-[180px]">
+                      {timerState.status === 'completed' ? '🔔 Hit your next set!' : timerState.label}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Quick Presets & +/- 15s Controls */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => adjustTimerSeconds(-15)}
+                    className="px-2 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-[11px] font-mono font-bold text-slate-200 border border-navy-700 active:scale-95"
+                  >
+                    -15s
+                  </button>
+                  <button
+                    onClick={() => adjustTimerSeconds(15)}
+                    className="px-2 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-[11px] font-mono font-bold text-slate-200 border border-navy-700 active:scale-95"
+                  >
+                    +15s
+                  </button>
+                  <button
+                    onClick={resetTimer}
+                    className="p-1.5 rounded-lg bg-navy-800 hover:bg-navy-700 text-slate-300 border border-navy-700 active:scale-95"
+                    title="Reset Timer"
+                  >
+                    <Icon name="rotateCcw" size={15} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Preset Row (60s, 90s, 2m, 2m30s) */}
+              <div className="grid grid-cols-4 gap-1.5 mt-2 pt-2 border-t border-navy-800/90">
+                {[
+                  { label: '60s', sec: 60 },
+                  { label: '90s', sec: 90 },
+                  { label: '2m', sec: 120 },
+                  { label: '2m30s', sec: 150 }
+                ].map(p => (
+                  <button
+                    key={p.sec}
+                    onClick={() => startRestTimer(p.sec, `${p.label} Rest`)}
+                    className={`py-1 rounded-lg font-mono text-xs font-bold transition active:scale-95 ${
+                      timerState.totalDuration === p.sec && timerState.status === 'running'
+                        ? 'bg-gold-500 text-navy-950'
+                        : 'bg-navy-800/90 hover:bg-navy-700 text-slate-300'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ====================================================================
+              MOBILE FIXED BOTTOM TAB BAR (< 768px, iPhone Safari PWA Safe)
+          ==================================================================== */}
+          <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-navy-900/95 backdrop-blur-lg border-t border-navy-800 pb-safe-nav select-none">
+            <div className="grid grid-cols-5 h-16">
+              {NAV_TABS.map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex flex-col items-center justify-center gap-1 relative transition ${
+                      isActive ? 'text-gold-500 font-bold' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {isActive && (
+                      <span className="absolute top-0 inset-x-4 h-0.5 bg-gold-500 rounded-full" />
+                    )}
+                    <Icon name={tab.icon} size={20} />
+                    <span className="text-[10px] tracking-tight leading-none">{tab.label.split(' ')[0]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* ====================================================================
+              CUSTOM CONFIRMATION MODAL (No window.confirm)
+          ==================================================================== */}
+          {confirmModal && (
+            <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 rounded-2xl max-w-md w-full p-5 shadow-2xl">
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                  {confirmModal.title}
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">
+                  {confirmModal.message}
+                </p>
+                <div className="flex items-center justify-end gap-2.5 mt-5">
+                  <button
+                    onClick={() => setConfirmModal(null)}
+                    className="px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-200 dark:bg-navy-800 text-slate-800 dark:text-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-gold-500 text-navy-950"
+                  >
+                    {confirmModal.confirmText || 'Confirm'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================================================================
+    // MODULE A: UNLIMITED WORKOUT TRACKER (PUSH / PULL / LEGS + CUSTOM ROUTINES)
+    // ============================================================================
+    function WorkoutModule({
+      routines,
+      setRoutines,
+      activeWorkoutDraft,
+      workoutElapsedSeconds,
+      formatClock,
+      switchActiveRoutine,
+      updateSetField,
+      toggleSetCompleted,
+      copyPreviousBestToExercise,
+      addSetToExercise,
+      removeSetFromExercise,
+      moveExerciseInDraft,
+      deleteExerciseFromDraft,
+      addExerciseToDraftAndRoutine,
+      discardCurrentDraft,
+      finishAndSaveWorkout,
+      startRestTimer,
+      showToast
+    }) {
+      const [showAddExercise, setShowAddExercise] = useState(false);
+      const [newExName, setNewExName] = useState('');
+      const [newExRepRange, setNewExRepRange] = useState('8–12');
+      const [newExWeight, setNewExWeight] = useState('45');
+      const [newExReps, setNewExReps] = useState('10');
+      const [newExSets, setNewExSets] = useState('3');
+
+      const [showNewRoutineModal, setShowNewRoutineModal] = useState(false);
+      const [customRoutineName, setCustomRoutineName] = useState('');
+      const [customRoutineSub, setCustomRoutineSub] = useState('');
+
+      const completedSetsCount = useMemo(() => {
+        return activeWorkoutDraft.exercises.reduce(
+          (acc, ex) => acc + ex.sets.filter(s => s.completed).length,
+          0
+        );
+      }, [activeWorkoutDraft.exercises]);
+
+      const totalSetsCount = useMemo(() => {
+        return activeWorkoutDraft.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+      }, [activeWorkoutDraft.exercises]);
+
+      const handleCreateRoutine = (e) => {
+        e.preventDefault();
+        if (!customRoutineName.trim()) return;
+        const newRoutine = {
+          id: `routine-${Date.now()}`,
+          name: customRoutineName.trim(),
+          subtitle: customRoutineSub.trim() || 'Custom Midshipman Training Block',
+          defaultRestSeconds: 90,
+          exercises: [
+            {
+              id: `ex-${Date.now()}`,
+              name: 'Primary Compound Lift',
+              targetSets: 3,
+              repRange: '6–10',
+              minReps: 6,
+              maxReps: 10,
+              previousBest: { weight: 95, reps: 8 },
+              sets: [
+                { id: 's1', weight: '95', reps: '8', completed: false },
+                { id: 's2', weight: '95', reps: '8', completed: false },
+                { id: 's3', weight: '95', reps: '8', completed: false }
+              ]
+            }
+          ]
+        };
+        setRoutines(prev => [...prev, newRoutine]);
+        setCustomRoutineName('');
+        setCustomRoutineSub('');
+        setShowNewRoutineModal(false);
+        switchActiveRoutine(newRoutine.id);
+      };
+
+      const handleAddExerciseSubmit = (e) => {
+        e.preventDefault();
+        if (!newExName.trim()) return;
+        addExerciseToDraftAndRoutine(newExName, newExRepRange, newExWeight, newExReps, newExSets);
+        setNewExName('');
+        setShowAddExercise(false);
+      };
+
+      return (
+        <div className="space-y-5">
+          {/* Top Routine Selector Strip */}
+          <div className="bg-white dark:bg-navy-900 rounded-2xl p-4 border border-slate-200 dark:border-navy-800 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <span className="text-[11px] font-mono uppercase tracking-wider text-gold-600 dark:text-gold-400 font-bold">
+                  3-Day Hypertrophy + 20–25 Mi/Wk Run Protocol
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Active Training Split
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setShowNewRoutineModal(true)}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 hover:bg-gold-500 hover:text-navy-950 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Icon name="plus" size={15} />
+                <span>New Routine</span>
+              </button>
+            </div>
+
+            {/* Routine Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {routines.map(routine => {
+                const isSelected = routine.id === activeWorkoutDraft.routineId;
+                return (
+                  <button
+                    key={routine.id}
+                    onClick={() => switchActiveRoutine(routine.id)}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition flex items-center gap-2 shrink-0 ${
+                      isSelected
+                        ? 'bg-gold-500 text-navy-950 shadow-md shadow-gold-500/20'
+                        : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-navy-700'
+                    }`}
+                  >
+                    <Icon name="dumbbell" size={15} />
+                    <span>{routine.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Real-Time Auto-Save Status Bar */}
+            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-navy-800 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  In-Progress Workout Auto-Saved
+                </span>
+                <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                  Elapsed: <strong className="text-slate-800 dark:text-slate-200">{formatClock(workoutElapsedSeconds)}</strong>
+                </span>
+                <span className="text-xs font-mono text-slate-500 dark:text-slate-400 hidden sm:inline">
+                  • Sets: <strong className="text-gold-500">{completedSetsCount}/{totalSetsCount}</strong>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={discardCurrentDraft}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-300 hover:text-rose-400 transition"
+                >
+                  Discard Draft
+                </button>
+                <button
+                  onClick={finishAndSaveWorkout}
+                  className="px-4 py-1.5 rounded-lg text-xs font-extrabold bg-emerald-500 hover:bg-emerald-400 text-navy-950 shadow-sm flex items-center gap-1.5 transition active:scale-95"
+                >
+                  <Icon name="check" size={15} />
+                  <span>Finish & Save Workout</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Exercise Cards List */}
+          <div className="space-y-4">
+            {activeWorkoutDraft.exercises.map((exercise, exIdx) => {
+              // Check if user hit top of double-progression rep range on all sets
+              const maxTarget = exercise.maxReps || 10;
+              const readyToProgress = exercise.sets.length > 0 && exercise.sets.every(
+                s => (parseInt(s.reps, 10) || 0) >= maxTarget && (parseFloat(s.weight) || 0) >= (exercise.previousBest?.weight || 0)
+              );
+
+              return (
+                <div
+                  key={exercise.id}
+                  className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-800 shadow-sm overflow-hidden"
+                >
+                  {/* Exercise Header */}
+                  <div className="p-4 bg-slate-50/70 dark:bg-navy-800/50 border-b border-slate-200 dark:border-navy-800 flex flex-wrap items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-gold-500/20 text-gold-600 dark:text-gold-400 font-mono text-xs font-extrabold flex items-center justify-center">
+                          {exIdx + 1}
+                        </span>
+                        <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white">
+                          {exercise.name}
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-navy-700 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {exercise.sets.length} × {exercise.repRange}
+                        </span>
+                        {readyToProgress && (
+                          <span className="px-2 py-0.5 rounded-md bg-gold-500/20 border border-gold-500/40 text-gold-500 font-mono text-[11px] font-bold">
+                            ★ Hit Top Reps — Add +5 lbs Next Week!
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Previous Best Readout */}
+                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 pl-8">
+                        <span>
+                          Previous Best:{' '}
+                          <strong className="font-mono text-slate-800 dark:text-gold-400">
+                            {exercise.previousBest?.weight || 0} lbs × {exercise.previousBest?.reps || 0}
+                          </strong>
+                        </span>
+                        <button
+                          onClick={() => copyPreviousBestToExercise(exercise.id)}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline"
+                        >
+                          <Icon name="copy" size={12} />
+                          <span>Copy Last</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Reorder & Delete Controls */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => moveExerciseInDraft(exIdx, -1)}
+                        disabled={exIdx === 0}
+                        className="p-1.5 rounded-lg bg-slate-200/70 dark:bg-navy-800 text-slate-600 dark:text-slate-300 disabled:opacity-30"
+                        title="Move Up"
+                      >
+                        <Icon name="chevronUp" size={15} />
+                      </button>
+                      <button
+                        onClick={() => moveExerciseInDraft(exIdx, 1)}
+                        disabled={exIdx === activeWorkoutDraft.exercises.length - 1}
+                        className="p-1.5 rounded-lg bg-slate-200/70 dark:bg-navy-800 text-slate-600 dark:text-slate-300 disabled:opacity-30"
+                        title="Move Down"
+                      >
+                        <Icon name="chevronDown" size={15} />
+                      </button>
+                      <button
+                        onClick={() => deleteExerciseFromDraft(exercise.id)}
+                        className="p-1.5 rounded-lg bg-slate-200/70 dark:bg-navy-800 text-rose-500 hover:bg-rose-500/20"
+                        title="Remove Exercise"
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sets Table */}
+                  <div className="p-3 sm:p-4 space-y-2">
+                    <div className="grid grid-cols-12 gap-2 text-[11px] font-mono uppercase tracking-wider text-slate-400 px-1">
+                      <div className="col-span-2 sm:col-span-1">Set</div>
+                      <div className="col-span-3 sm:col-span-4">Prev Best</div>
+                      <div className="col-span-3">Lbs</div>
+                      <div className="col-span-2">Reps</div>
+                      <div className="col-span-2 text-right">Done</div>
+                    </div>
+
+                    {exercise.sets.map((setItem, sIdx) => (
+                      <div
+                        key={setItem.id}
+                        className={`grid grid-cols-12 gap-2 items-center p-2 rounded-xl border transition ${
+                          setItem.completed
+                            ? 'bg-emerald-500/10 border-emerald-500/40'
+                            : 'bg-slate-50 dark:bg-navy-950/60 border-slate-200/80 dark:border-navy-800'
+                        }`}
+                      >
+                        {/* Set Number */}
+                        <div className="col-span-2 sm:col-span-1 flex items-center gap-1">
+                          <span className="font-mono font-bold text-xs sm:text-sm text-slate-600 dark:text-slate-300 pl-1">
+                            #{sIdx + 1}
+                          </span>
+                        </div>
+
+                        {/* Previous Best Reference */}
+                        <div className="col-span-3 sm:col-span-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateSetField(exercise.id, setItem.id, 'weight', String(exercise.previousBest?.weight || 0));
+                              updateSetField(exercise.id, setItem.id, 'reps', String(exercise.previousBest?.reps || 8));
+                            }}
+                            className="text-left font-mono text-xs text-slate-500 dark:text-slate-400 hover:text-gold-400 truncate max-w-full"
+                            title="Tap to copy to this set"
+                          >
+                            {exercise.previousBest?.weight || 0} × {exercise.previousBest?.reps || 0}
+                          </button>
+                        </div>
+
+                        {/* Weight Input (Instant Auto-Save) */}
+                        <div className="col-span-3">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={setItem.weight}
+                            onChange={(e) => updateSetField(exercise.id, setItem.id, 'weight', e.target.value)}
+                            placeholder="Lbs"
+                            className="w-full px-2.5 py-2 rounded-lg font-mono font-bold text-sm sm:text-base text-center bg-white dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-slate-900 dark:text-white focus:outline-none focus:border-gold-500"
+                          />
+                        </div>
+
+                        {/* Reps Input (Instant Auto-Save) */}
+                        <div className="col-span-2">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={setItem.reps}
+                            onChange={(e) => updateSetField(exercise.id, setItem.id, 'reps', e.target.value)}
+                            placeholder="Reps"
+                            className="w-full px-2 py-2 rounded-lg font-mono font-bold text-sm sm:text-base text-center bg-white dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-slate-900 dark:text-white focus:outline-none focus:border-gold-500"
+                          />
+                        </div>
+
+                        {/* Large Tap-Target Set Complete Checkbox + Remove Set */}
+                        <div className="col-span-2 flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleSetCompleted(exercise, setItem, sIdx)}
+                            className={`h-10 w-11 rounded-xl flex items-center justify-center font-bold transition active:scale-90 ${
+                              setItem.completed
+                                ? 'bg-emerald-500 text-navy-950 shadow-md shadow-emerald-500/20'
+                                : 'bg-slate-200 dark:bg-navy-800 text-slate-500 dark:text-slate-400 hover:border-gold-500 border border-transparent'
+                            }`}
+                            title="Complete Set & Auto-Start Rest Timer"
+                          >
+                            <Icon name="check" size={19} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Add / Remove Set Footer */}
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => addSetToExercise(exercise.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-navy-800 hover:bg-gold-500 hover:text-navy-950 text-slate-700 dark:text-slate-300 flex items-center gap-1 transition"
+                        >
+                          <Icon name="plus" size={14} />
+                          <span>Add Set</span>
+                        </button>
+                        {exercise.sets.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeSetFromExercise(exercise.id, exercise.sets[exercise.sets.length - 1].id)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-navy-800 text-slate-500 hover:text-rose-400 transition"
+                          >
+                            - Set
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => startRestTimer(90, exercise.name)}
+                        className="text-xs font-mono font-semibold text-gold-600 dark:text-gold-400 flex items-center gap-1 hover:underline"
+                      >
+                        <Icon name="timer" size={14} />
+                        <span>Rest 90s</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add Exercise Form / Button */}
+          {!showAddExercise ? (
+            <button
+              onClick={() => setShowAddExercise(true)}
+              className="w-full py-3.5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-navy-700 hover:border-gold-500 text-slate-600 dark:text-slate-300 font-bold text-sm flex items-center justify-center gap-2 transition"
+            >
+              <Icon name="plus" size={18} />
+              <span>Add Exercise to {activeWorkoutDraft.routineName}</span>
+            </button>
+          ) : (
+            <form
+              onSubmit={handleAddExerciseSubmit}
+              className="bg-white dark:bg-navy-900 rounded-2xl p-4 border border-gold-500/50 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-sm text-gold-500 uppercase font-mono">Add Exercise</h4>
+                <button type="button" onClick={() => setShowAddExercise(false)} className="text-slate-400">
+                  <Icon name="x" size={18} />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-slate-400 block mb-1">Exercise Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newExName}
+                    onChange={(e) => setNewExName(e.target.value)}
+                    placeholder="e.g., Weighted Dips"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Rep Range</label>
+                  <input
+                    type="text"
+                    value={newExRepRange}
+                    onChange={(e) => setNewExRepRange(e.target.value)}
+                    placeholder="8–12"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Working Weight (lbs)</label>
+                  <input
+                    type="number"
+                    value={newExWeight}
+                    onChange={(e) => setNewExWeight(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-gold-500 text-navy-950 font-bold text-xs"
+                >
+                  Add to Routine
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Primary Bottom Finish & Save CTA */}
+          <div className="bg-gradient-to-r from-navy-900 to-navy-800 border border-gold-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+            <div className="text-center sm:text-left">
+              <h4 className="font-extrabold text-white text-base">
+                Ready to wrap up {activeWorkoutDraft.routineName}?
+              </h4>
+              <p className="text-xs text-slate-300">
+                Commits session to Workout History, updates Previous Bests, and resets draft.
+              </p>
+            </div>
+            <button
+              onClick={finishAndSaveWorkout}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-gold-500/20 active:scale-95 transition"
+            >
+              <Icon name="award" size={18} />
+              <span>Finish & Save Workout</span>
+            </button>
+          </div>
+
+          {/* New Custom Routine Modal */}
+          {showNewRoutineModal && (
+            <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+              <form
+                onSubmit={handleCreateRoutine}
+                className="bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-extrabold">Create Custom Routine</h3>
+                  <button type="button" onClick={() => setShowNewRoutineModal(false)}>
+                    <Icon name="x" size={18} />
+                  </button>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 block mb-1">Routine Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={customRoutineName}
+                    onChange={(e) => setCustomRoutineName(e.target.value)}
+                    placeholder="e.g., Saturday: PRT & Arms"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 block mb-1">Focus / Notes</label>
+                  <input
+                    type="text"
+                    value={customRoutineSub}
+                    onChange={(e) => setCustomRoutineSub(e.target.value)}
+                    placeholder="e.g., Pull-ups, Push-ups, Plank & Arms"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewRoutineModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-navy-800 text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-gold-500 text-navy-950 text-xs font-black"
+                  >
+                    Create Routine
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================================================================
+    // MODULE B: KING HALL & BANCROFT FUEL TRACKER
+    // ============================================================================
+    function NutritionModule({
+      macroTargets,
+      setMacroTargets,
+      mealLibrary,
+      setMealLibrary,
+      todayLog,
+      todayTotals,
+      logMealItem,
+      removeLoggedMeal,
+      toggleDailyHabit,
+      showToast
+    }) {
+      const [selectedMultiplier, setSelectedMultiplier] = useState(1);
+      const [editingTargets, setEditingTargets] = useState(false);
+      const [customFood, setCustomFood] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '', saveToLibrary: true });
+
+      const handleCustomFoodSubmit = (e) => {
+        e.preventDefault();
+        if (!customFood.name.trim()) return;
+        const item = {
+          id: `custom-${Date.now()}`,
+          name: customFood.name.trim(),
+          calories: Number(customFood.calories) || 0,
+          protein: Number(customFood.protein) || 0,
+          carbs: Number(customFood.carbs) || 0,
+          fat: Number(customFood.fat) || 0,
+          category: 'Custom'
+        };
+        logMealItem(item, 1);
+        if (customFood.saveToLibrary) {
+          setMealLibrary(prev => [item, ...prev]);
+        }
+        setCustomFood({ name: '', calories: '', protein: '', carbs: '', fat: '', saveToLibrary: true });
+      };
+
+      const macroBars = [
+        { label: 'Calories', current: todayTotals.calories, target: macroTargets.calories, unit: 'kcal', color: 'from-gold-500 to-amber-400' },
+        { label: 'Protein', current: todayTotals.protein, target: macroTargets.protein, unit: 'g', color: 'from-emerald-500 to-teal-400' },
+        { label: 'Carbs', current: todayTotals.carbs, target: macroTargets.carbs, unit: 'g', color: 'from-sky-500 to-blue-400' },
+        { label: 'Dietary Fat', current: todayTotals.fat, target: macroTargets.fat, unit: 'g', color: 'from-amber-500 to-orange-400' }
+      ];
+
+      return (
+        <div className="space-y-5">
+          {/* Daily Macro Scoreboard */}
+          <div className="bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <span className="text-[11px] font-mono uppercase tracking-wider text-gold-600 dark:text-gold-400 font-bold">
+                  Midshipman Lean-Bulk Protocol (20–25 Mi/Wk Running)
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                  King Hall & Bancroft Fuel
+                </h2>
+              </div>
+              <button
+                onClick={() => setEditingTargets(!editingTargets)}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-navy-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+              >
+                {editingTargets ? 'Done Editing' : 'Edit Targets'}
+              </button>
+            </div>
+
+            {editingTargets && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 p-3 rounded-xl bg-slate-50 dark:bg-navy-950 border border-gold-500/40">
+                {[
+                  { key: 'calories', label: 'Daily kcal' },
+                  { key: 'protein', label: 'Protein (g)' },
+                  { key: 'carbs', label: 'Carbs (g)' },
+                  { key: 'fat', label: 'Fat (g)' }
+                ].map(f => (
+                  <div key={f.key}>
+                    <label className="text-[11px] font-mono text-slate-400 block mb-1">{f.label}</label>
+                    <input
+                      type="number"
+                      value={macroTargets[f.key]}
+                      onChange={(e) => setMacroTargets(prev => ({ ...prev, [f.key]: Number(e.target.value) || 0 }))}
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-navy-800 border border-slate-300 dark:border-navy-700 font-mono font-bold text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Progress Bars */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {macroBars.map(bar => {
+                const pct = Math.min(100, Math.round((bar.current / Math.max(1, bar.target)) * 100));
+                const rem = Math.max(0, bar.target - bar.current);
+                return (
+                  <div key={bar.label} className="p-3.5 rounded-xl bg-slate-50 dark:bg-navy-950/80 border border-slate-200/70 dark:border-navy-800">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-bold text-slate-600 dark:text-slate-300">{bar.label}</span>
+                      <span className="font-mono font-bold text-gold-500">{pct}%</span>
+                    </div>
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="font-mono text-lg font-black text-slate-900 dark:text-white">
+                        {bar.current.toLocaleString()}
+                        <span className="text-xs font-normal text-slate-400"> / {bar.target}{bar.unit}</span>
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-400">{rem}{bar.unit} left</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-200 dark:bg-navy-800 rounded-full overflow-hidden">
+                      <div className={`h-full bg-gradient-to-r ${bar.color} transition-all duration-300`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Daily Midshipman Habits (Creatine, Hydration, 5-Mile Run) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-4 pt-4 border-t border-slate-200 dark:border-navy-800">
+              {[
+                { key: 'creatine', label: 'Creatine Monohydrate (5g)', sub: 'Daily strength & cell hydration', icon: 'zap' },
+                { key: 'hydration', label: 'Hydration (120+ oz Water)', sub: 'Essential for 20–25 mi/wk volume', icon: 'droplet' },
+                { key: 'run', label: '5-Mile Run Completed', sub: 'Annapolis seawall / seawall tempo', icon: 'activity' }
+              ].map(h => {
+                const checked = Boolean(todayLog.habits?.[h.key]);
+                return (
+                  <button
+                    key={h.key}
+                    onClick={() => toggleDailyHabit(h.key)}
+                    className={`p-3 rounded-xl border text-left flex items-center gap-3 transition active:scale-98 ${
+                      checked
+                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 dark:text-emerald-300'
+                        : 'bg-slate-50 dark:bg-navy-950/60 border-slate-200 dark:border-navy-800 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      checked ? 'bg-emerald-500 text-navy-950' : 'bg-slate-200 dark:bg-navy-800 text-slate-400'
+                    }`}>
+                      <Icon name={checked ? 'check' : h.icon} size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs sm:text-sm truncate">{h.label}</div>
+                      <div className="text-[11px] opacity-75 truncate">{h.sub}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick-Add King Hall & Bancroft Library with Multipliers */}
+          <div className="bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white">
+                  Quick-Add King Hall & Bancroft Meals
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Select portion multiplier below, then tap any item to log immediately.
+                </p>
+              </div>
+
+              {/* Serving Multiplier Selector (0.5x, 1x, 1.5x, 2x) */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-navy-950 p-1 rounded-xl border border-slate-200 dark:border-navy-800">
+                {[0.5, 1, 1.5, 2].map(mult => (
+                  <button
+                    key={mult}
+                    onClick={() => setSelectedMultiplier(mult)}
+                    className={`px-3 py-1.5 rounded-lg font-mono text-xs font-extrabold transition ${
+                      selectedMultiplier === mult
+                        ? 'bg-gold-500 text-navy-950 shadow'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {mult}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {mealLibrary.map(item => {
+                const cal = Math.round(item.calories * selectedMultiplier);
+                const prot = Math.round(item.protein * selectedMultiplier);
+                const carb = Math.round(item.carbs * selectedMultiplier);
+                const fat = Math.round(item.fat * selectedMultiplier);
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => logMealItem(item, selectedMultiplier)}
+                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-navy-950/80 hover:border-gold-500 border border-slate-200 dark:border-navy-800 text-left flex flex-col justify-between gap-2 group transition active:scale-98"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-gold-400 transition">
+                        {item.name}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-gold-500/20 text-gold-500 font-mono text-xs font-bold shrink-0">
+                        +{cal} kcal
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/60 dark:border-navy-800/80">
+                      <span><strong className="text-emerald-400">{prot}g</strong> P</span>
+                      <span><strong className="text-sky-400">{carb}g</strong> C</span>
+                      <span><strong className="text-amber-400">{fat}g</strong> F</span>
+                      <span className="text-gold-500 font-bold">+ Log {selectedMultiplier}x</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Custom Food Entry & Today's Meal Log */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Custom Food Entry Form */}
+            <form
+              onSubmit={handleCustomFoodSubmit}
+              className="lg:col-span-5 bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800 space-y-3 h-fit"
+            >
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                Custom Food / Mess Hall Entry
+              </h3>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Food / Meal Name</label>
+                <input
+                  type="text"
+                  required
+                  value={customFood.name}
+                  onChange={(e) => setCustomFood(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., King Hall Chicken Parmesan"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Calories (kcal)</label>
+                  <input
+                    type="number"
+                    required
+                    value={customFood.calories}
+                    onChange={(e) => setCustomFood(prev => ({ ...prev, calories: e.target.value }))}
+                    placeholder="550"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Protein (g)</label>
+                  <input
+                    type="number"
+                    required
+                    value={customFood.protein}
+                    onChange={(e) => setCustomFood(prev => ({ ...prev, protein: e.target.value }))}
+                    placeholder="42"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={customFood.carbs}
+                    onChange={(e) => setCustomFood(prev => ({ ...prev, carbs: e.target.value }))}
+                    placeholder="48"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Fat (g)</label>
+                  <input
+                    type="number"
+                    value={customFood.fat}
+                    onChange={(e) => setCustomFood(prev => ({ ...prev, fat: e.target.value }))}
+                    placeholder="18"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-300 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={customFood.saveToLibrary}
+                  onChange={(e) => setCustomFood(prev => ({ ...prev, saveToLibrary: e.target.checked }))}
+                  className="rounded text-gold-500"
+                />
+                <span>Save to Quick-Add Library for future taps</span>
+              </label>
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-black text-xs sm:text-sm transition"
+              >
+                + Log Custom Meal
+              </button>
+            </form>
+
+            {/* Today's Logged Meals List */}
+            <div className="lg:col-span-7 bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                  Today's Logged Fuel ({todayLog.meals.length})
+                </h3>
+                <span className="font-mono text-xs text-gold-500 font-bold">
+                  Total: {todayTotals.calories} kcal • {todayTotals.protein}g P
+                </span>
+              </div>
+
+              {todayLog.meals.length === 0 ? (
+                <p className="text-sm text-slate-400 py-8 text-center">
+                  No meals logged today yet. Tap any King Hall item above!
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  {todayLog.meals.map(meal => (
+                    <div
+                      key={meal.id}
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-navy-950/70 border border-slate-200/70 dark:border-navy-800 flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                            {meal.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">{meal.time}</span>
+                        </div>
+                        <div className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                          <strong className="text-gold-500">{meal.calories} kcal</strong> • {meal.protein}g P • {meal.carbs}g C • {meal.fat}g F
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeLoggedMeal(meal.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10"
+                        title="Delete Entry"
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================================================
+    // MODULE C: INTEGRATED GEMINI AGENT ("COACH AI" TAB)
+    // ============================================================================
+    function CoachAIModule({
+      chatMessages,
+      setChatMessages,
+      settings,
+      setSettings,
+      todayTotals,
+      macroTargets,
+      todayLog,
+      activeWorkoutDraft,
+      routines,
+      workoutHistory,
+      weightHistory,
+      executeAgentActions,
+      setActiveTab
+    }) {
+      const [inputPrompt, setInputPrompt] = useState('');
+      const [isThinking, setIsThinking] = useState(false);
+      const chatBottomRef = useRef(null);
+
+      useEffect(() => {
+        chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [chatMessages, isThinking]);
+
+      const buildContextSnapshot = () => {
+        return {
+          athleteProfile: "USNA Midshipman, 5'11\", baseline 160.0 lbs, running 20-25 miles/week, goal lean bulk at 3,400 kcal & 155g protein.",
+          todayDate: getTodayISO(),
+          nutritionToday: {
+            logged: todayTotals,
+            targets: macroTargets,
+            remainingCalories: macroTargets.calories - todayTotals.calories,
+            remainingProtein: macroTargets.protein - todayTotals.protein,
+            mealsLoggedToday: todayLog.meals.map(m => `${m.name} (${m.calories}kcal, ${m.protein}g P)`),
+            habitsToday: todayLog.habits
+          },
+          activeWorkoutDraft: {
+            routineName: activeWorkoutDraft.routineName,
+            exercises: activeWorkoutDraft.exercises.map(ex => ({
+              name: ex.name,
+              repRange: ex.repRange,
+              previousBest: ex.previousBest,
+              currentSets: ex.sets.map(s => `${s.weight}x${s.reps}${s.completed ? '(done)' : ''}`)
+            }))
+          },
+          recentWorkouts: workoutHistory.slice(0, 4),
+          recentBodyweight: weightHistory.slice(-5)
+        };
+      };
+
+      const sendPromptToGemini = async (promptText) => {
+        const cleanText = promptText.trim();
+        if (!cleanText || isThinking) return;
+
+        const userMsg = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: cleanText
+        };
+        setChatMessages(prev => [...prev, userMsg]);
+        setInputPrompt('');
+        setIsThinking(true);
+
+        const snapshot = buildContextSnapshot();
+        const systemInstructionText = `You are the "USNA Fit & Fuel Coach AI" for a United States Naval Academy Midshipman (5'11", 160 lbs, running 20-25 miles/week, lifting Push/Pull/Legs).
+Current App State JSON Snapshot:
+${JSON.stringify(snapshot)}
+
+CRITICAL RESPONSE FORMAT:
+You MUST respond with valid JSON matching this exact structure:
+{
+  "reply": "Your concise, tactical, encouraging coaching response here (use clear bullet points when helpful).",
+  "actions": [
+    // Include zero, one, or multiple action objects ONLY when the user asks you to log, update, toggle, or create data:
+    // 1. { "type": "ADD_MEAL", "name": "King Hall Grilled Chicken & Rice (2x)", "calories": 960, "protein": 100, "carbs": 110, "fat": 15 }
+    // 2. { "type": "LOG_WEIGHT", "weight": 161.2, "notes": "Morning weigh-in" }
+    // 3. { "type": "TOGGLE_HABIT", "habit": "creatine" | "hydration" | "run", "value": true }
+    // 4. { "type": "UPDATE_EXERCISE_WEIGHT", "exerciseName": "Barbell Bench Press", "weightDelta": 5, "newWeight": 120, "newReps": 8 }
+    // 5. { "type": "CREATE_ROUTINE", "name": "Saturday PRT Prep", "exercises": [{ "name": "Weighted Pull-Ups", "sets": 3, "repRange": "6-8", "weight": 25, "reps": 7 }] }
+  ]
+}`;
+
+        // Local intelligent parser fallback if user hasn't entered a Gemini API Key yet
+        if (!settings.geminiApiKey) {
+          setTimeout(() => {
+            const lower = cleanText.toLowerCase();
+            const localActions = [];
+            let localReply = '';
+
+            if (lower.includes('chicken') && lower.includes('rice')) {
+              localActions.push({
+                type: 'ADD_MEAL',
+                name: 'King Hall Chicken & Steamed Rice (2 Servings)',
+                calories: 970,
+                protein: 102,
+                carbs: 112,
+                fat: 14
+              });
+              localReply = "Logged 2 servings of King Hall Grilled Chicken Breast & Steamed Rice (+970 kcal, +102g Protein, +112g Carbs). Add a Gemini API Key in Sync & Settings anytime to unlock live Gemini model reasoning!";
+            } else if (lower.includes('creatine')) {
+              localActions.push({ type: 'TOGGLE_HABIT', habit: 'creatine', value: true });
+              localReply = "Checked off your daily 5g Creatine Monohydrate! Keep hydration above 120 oz today.";
+            } else if (lower.includes('weight') && /\d{3}(\.\d+)?/.test(lower)) {
+              const match = lower.match(/(\d{3}(?:\.\d+)?)/);
+              const w = parseFloat(match[1]);
+              localActions.push({ type: 'LOG_WEIGHT', weight: w, notes: 'Logged via Coach AI' });
+              localReply = `Logged your morning bodyweight of ${w.toFixed(1)} lbs to your Progress chart!`;
+            } else if (lower.includes('bench') && (lower.includes('add') || lower.includes('adjust') || lower.includes('push'))) {
+              localActions.push({ type: 'UPDATE_EXERCISE_WEIGHT', exerciseName: 'Barbell Bench Press', weightDelta: 5, newWeight: 120, newReps: 8 });
+              localReply = "Since you hit 115 lbs × 8 reps on Bench Press, I've bumped your Barbell Bench Press working weight to 120 lbs for your next Push day! Aim for 4 sets of 5–8 reps.";
+            } else {
+              const remCal = Math.max(0, macroTargets.calories - todayTotals.calories);
+              const remP = Math.max(0, macroTargets.protein - todayTotals.protein);
+              localReply = `Tactical Status Briefing (Offline Smart Mode — add your Gemini API Key in Sync & Settings for live ${settings.geminiModel} calls):\n• Calories Remaining Today: ${remCal} kcal (${remP}g Protein left to hit ${macroTargets.protein}g).\n• King Hall Recommendation: Grab 1.5x Grilled Chicken Breast + 1.5x Pasta & Meat Sauce + 2 tbsp Honey pre-run.\n• Lifting Progression: Your Bench Press (115x8), Incline DB (50x10), and Chest-Supported Row (70x10) are right at the top of their rep ranges—ready for +5 lbs!`;
+            }
+
+            const badges = executeAgentActions(localActions);
+            setChatMessages(prev => [
+              ...prev,
+              {
+                id: `ai-${Date.now()}`,
+                role: 'assistant',
+                content: localReply,
+                actionsExecuted: badges
+              }
+            ]);
+            setIsThinking(false);
+          }, 550);
+          return;
+        }
+
+        // Live Gemini REST API Call
+        try {
+          const selectedModel = settings.geminiModel || 'gemini-4-hydrogen';
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${encodeURIComponent(settings.geminiApiKey.trim())}`;
+
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: systemInstructionText }]
+              },
+              contents: [
+                {
+                  role: 'user',
+                  parts: [{ text: cleanText }]
+                }
+              ],
+              generationConfig: {
+                responseMimeType: 'application/json',
+                temperature: 0.4
+              }
+            })
+          });
+
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`API ${response.status}: ${errText.slice(0, 140)}`);
+          }
+
+          const data = await response.json();
+          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+
+          // Parse structured JSON safely even if wrapped in code fences
+          const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+          let parsed = { reply: rawText, actions: [] };
+          try {
+            parsed = JSON.parse(cleanedJson);
+          } catch (e) {}
+
+          const badges = executeAgentActions(parsed.actions || []);
+          setChatMessages(prev => [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              role: 'assistant',
+              content: parsed.reply || 'Command executed.',
+              actionsExecuted: badges
+            }
+          ]);
+        } catch (err) {
+          setChatMessages(prev => [
+            ...prev,
+            {
+              id: `ai-err-${Date.now()}`,
+              role: 'assistant',
+              content: `⚠️ Gemini API Connection Notice (${settings.geminiModel}): ${err.message}. Check your API Key or switch models in Sync & Settings.`,
+              actionsExecuted: []
+            }
+          ]);
+        } finally {
+          setIsThinking(false);
+        }
+      };
+
+      const QUICK_CHIPS = [
+        "Analyze my week",
+        "What should I eat at King Hall to hit my macros?",
+        "Adjust weights for next Push day",
+        "Log 2 servings of King Hall chicken and rice",
+        "Log morning weight 161.2 lbs",
+        "Check off creatine"
+      ];
+
+      return (
+        <div className="flex flex-col h-[calc(100vh-14.5rem)] md:h-[calc(100vh-8.5rem)] bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-800 shadow-sm overflow-hidden">
+          {/* Coach AI Header */}
+          <div className="p-4 bg-slate-50 dark:bg-navy-800/70 border-b border-slate-200 dark:border-navy-800 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gold-500 text-navy-950 flex items-center justify-center font-black">
+                <Icon name="bot" size={20} />
+              </div>
+              <div>
+                <h2 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>USNA Coach AI & Data Agent</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-gold-500/20 text-gold-500">
+                    {settings.geminiModel}
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Context-aware of your 3,400 kcal target, workouts, and King Hall meals
+                </p>
+              </div>
+            </div>
+
+            {!settings.geminiApiKey && (
+              <button
+                onClick={() => setActiveTab('settings')}
+                className="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold"
+              >
+                + Set Gemini API Key
+              </button>
+            )}
+          </div>
+
+          {/* Messages Scroll Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {chatMessages.map(msg => {
+              const isUser = msg.role === 'user';
+              return (
+                <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[88%] sm:max-w-[78%] rounded-2xl px-4 py-3 text-sm space-y-2 ${
+                    isUser
+                      ? 'bg-gold-500 text-navy-950 font-semibold rounded-br-sm'
+                      : 'bg-slate-100 dark:bg-navy-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-navy-700 rounded-bl-sm'
+                  }`}>
+                    <div className="whitespace-pre-line leading-relaxed">{msg.content}</div>
+
+                    {/* Confirmation Badges for Executed State Actions */}
+                    {msg.actionsExecuted && msg.actionsExecuted.length > 0 && (
+                      <div className="pt-2 border-t border-slate-300 dark:border-navy-700 flex flex-wrap gap-1.5">
+                        {msg.actionsExecuted.map((badge, bIdx) => (
+                          <span
+                            key={bIdx}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono text-xs font-bold"
+                          >
+                            <Icon name="check" size={13} />
+                            <span>{badge}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {isThinking && (
+              <div className="flex justify-start">
+                <div className="bg-slate-100 dark:bg-navy-800 border border-slate-200 dark:border-navy-700 rounded-2xl px-4 py-3 text-xs font-mono text-gold-400 flex items-center gap-2">
+                  <Icon name="sparkles" size={15} className="animate-spin" />
+                  <span>Coach AI analyzing logs & executing state actions...</span>
+                </div>
+              </div>
+            )}
+            <div ref={chatBottomRef} />
+          </div>
+
+          {/* 1-Tap Quick Prompt Chips */}
+          <div className="px-3 py-2 bg-slate-50 dark:bg-navy-950/80 border-t border-slate-200 dark:border-navy-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {QUICK_CHIPS.map(chip => (
+              <button
+                key={chip}
+                onClick={() => sendPromptToGemini(chip)}
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-navy-800 hover:bg-gold-500 hover:text-navy-950 border border-slate-200 dark:border-navy-700 text-xs font-semibold whitespace-nowrap transition shrink-0"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Input Bar */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendPromptToGemini(inputPrompt);
+            }}
+            className="p-3 bg-white dark:bg-navy-900 border-t border-slate-200 dark:border-navy-800 flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={inputPrompt}
+              onChange={(e) => setInputPrompt(e.target.value)}
+              placeholder='Ask Coach AI or say "Log 2 servings of King Hall chicken and rice"...'
+              className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm focus:outline-none focus:border-gold-500"
+            />
+            <button
+              type="submit"
+              disabled={isThinking}
+              className="px-4 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-black text-sm flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Icon name="send" size={16} />
+              <span className="hidden sm:inline">Send</span>
+            </button>
+          </form>
+        </div>
+      );
+    }
+
+    // ============================================================================
+    // MODULE D: PROGRESS (MORNING BODYWEIGHT SVG CHART & WORKOUT HISTORY LOG)
+    // ============================================================================
+    function ProgressModule({
+      weightHistory,
+      setWeightHistory,
+      workoutHistory,
+      setWorkoutHistory,
+      showToast
+    }) {
+      const [weightInput, setWeightInput] = useState('');
+      const [weightDate, setWeightDate] = useState(getTodayISO());
+      const [weightNotes, setWeightNotes] = useState('');
+      const [searchQuery, setSearchQuery] = useState('');
+
+      const handleLogWeight = (e) => {
+        e.preventDefault();
+        const val = parseFloat(weightInput);
+        if (isNaN(val) || val < 90 || val > 350) {
+          showToast('Enter a valid bodyweight in lbs', 'amber');
+          return;
+        }
+        setWeightHistory(prev => {
+          const filtered = prev.filter(w => w.date !== weightDate);
+          return [...filtered, { id: `w-${Date.now()}`, date: weightDate, weight: val, notes: weightNotes || 'Morning weigh-in' }]
+            .sort((a, b) => a.date.localeCompare(b.date));
+        });
+        setWeightInput('');
+        setWeightNotes('');
+        showToast(`⚖️ Logged morning weight: ${val.toFixed(1)} lbs`, 'emerald');
+      };
+
+      // SVG Trend Chart Geometry
+      const chartData = weightHistory.slice(-14);
+      const weights = chartData.map(d => d.weight);
+      const minW = Math.min(...weights, 157) - 1.5;
+      const maxW = Math.max(...weights, 165) + 1.5;
+      const svgWidth = 640;
+      const svgHeight = 200;
+      const padX = 40;
+      const padY = 24;
+
+      const points = chartData.map((d, i) => {
+        const x = chartData.length === 1
+          ? svgWidth / 2
+          : padX + (i / (chartData.length - 1)) * (svgWidth - padX * 2);
+        const y = svgHeight - padY - ((d.weight - minW) / Math.max(1, maxW - minW)) * (svgHeight - padY * 2);
+        return { x, y, ...d };
+      });
+
+      const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
+
+      const filteredWorkouts = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return workoutHistory;
+        return workoutHistory.filter(w =>
+          w.routineName.toLowerCase().includes(q) ||
+          w.date.includes(q) ||
+          w.exercises.some(ex => ex.name.toLowerCase().includes(q))
+        );
+      }, [workoutHistory, searchQuery]);
+
+      return (
+        <div className="space-y-5">
+          {/* Morning Bodyweight Logger & SVG Trend Chart */}
+          <div className="bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <span className="text-[11px] font-mono uppercase tracking-wider text-gold-500 font-bold">
+                  Baseline: 160.0 lbs (5'11") • Target Lean Bulk: +0.5 lb/wk
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                  Morning Bodyweight Trend
+                </h2>
+              </div>
+              {weightHistory.length > 0 && (
+                <div className="px-3.5 py-2 rounded-xl bg-navy-800 text-gold-400 font-mono text-sm font-black">
+                  Current: {weightHistory[weightHistory.length - 1].weight.toFixed(1)} lbs
+                </div>
+              )}
+            </div>
+
+            {/* SVG Line Chart */}
+            <div className="w-full overflow-x-auto bg-slate-50 dark:bg-navy-950/90 rounded-xl p-3 border border-slate-200 dark:border-navy-800 mb-4">
+              <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-44 overflow-visible">
+                {/* Horizontal Reference Grid Lines */}
+                {[0.2, 0.5, 0.8].map((ratio, idx) => {
+                  const y = padY + ratio * (svgHeight - padY * 2);
+                  const val = (maxW - ratio * (maxW - minW)).toFixed(1);
+                  return (
+                    <g key={idx}>
+                      <line x1={padX} y1={y} x2={svgWidth - padX} y2={y} stroke="currentColor" className="text-slate-200 dark:text-navy-800" strokeDasharray="4 4" />
+                      <text x={6} y={y + 4} className="fill-slate-400 font-mono text-[10px]">{val}</text>
+                    </g>
+                  );
+                })}
+
+                {/* Trend Line */}
+                {points.length > 1 && (
+                  <polyline
+                    fill="none"
+                    stroke="#F5B700"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={polylinePoints}
+                  />
+                )}
+
+                {/* Data Points */}
+                {points.map((p, idx) => (
+                  <g key={p.id || idx}>
+                    <circle cx={p.x} cy={p.y} r="5" className="fill-gold-500 stroke-navy-950" strokeWidth="2" />
+                    <text x={p.x} y={p.y - 10} textAnchor="middle" className="fill-slate-700 dark:fill-gold-400 font-mono text-[10px] font-bold">
+                      {p.weight.toFixed(1)}
+                    </text>
+                    <text x={p.x} y={svgHeight - 6} textAnchor="middle" className="fill-slate-400 font-mono text-[9px]">
+                      {p.date.slice(5)}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+
+            {/* Log Weight Form */}
+            <form onSubmit={handleLogWeight} className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+              <input
+                type="number"
+                step="0.1"
+                required
+                value={weightInput}
+                onChange={(e) => setWeightInput(e.target.value)}
+                placeholder="Morning Weight (e.g. 160.6)"
+                className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono font-bold"
+              />
+              <input
+                type="date"
+                value={weightDate}
+                onChange={(e) => setWeightDate(e.target.value)}
+                className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+              />
+              <input
+                type="text"
+                value={weightNotes}
+                onChange={(e) => setWeightNotes(e.target.value)}
+                placeholder="Notes (e.g., Post 5-mile run)"
+                className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm"
+              />
+              <button
+                type="submit"
+                className="py-2.5 px-4 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-black text-sm transition"
+              >
+                + Log Weight
+              </button>
+            </form>
+          </div>
+
+          {/* Searchable Workout History Log */}
+          <div className="bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                  Completed Workout History ({filteredWorkouts.length})
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Search by routine (Push, Pull, Legs), exercise name, or date.
+                </p>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search Bench, Pull, 2025-02..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-xs sm:text-sm"
+                />
+                <span className="absolute left-3 top-2.5 text-slate-400">
+                  <Icon name="search" size={15} />
+                </span>
+              </div>
+            </div>
+
+            {filteredWorkouts.length === 0 ? (
+              <p className="text-sm text-slate-400 py-8 text-center">No matching workouts found.</p>
+            ) : (
+              <div className="space-y-3">
+                {filteredWorkouts.map(session => (
+                  <div
+                    key={session.id}
+                    className="p-4 rounded-xl bg-slate-50 dark:bg-navy-950/70 border border-slate-200 dark:border-navy-800 space-y-2"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">
+                          {session.routineName}
+                        </span>
+                        <span className="ml-2 font-mono text-xs text-slate-400">{session.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono text-xs">
+                        <span className="px-2 py-0.5 rounded bg-gold-500/20 text-gold-500 font-bold">
+                          {session.totalVolume?.toLocaleString() || 0} lbs vol
+                        </span>
+                        <span className="text-slate-400">{session.durationMinutes || 45} min</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {session.exercises.map((ex, idx) => (
+                        <div key={idx} className="text-xs bg-white dark:bg-navy-900 p-2 rounded-lg border border-slate-200/60 dark:border-navy-800">
+                          <div className="font-bold text-slate-800 dark:text-slate-200">{ex.name}</div>
+                          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {ex.sets.map(s => `${s.weight}×${s.reps}`).join(' • ')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================================================
+    // MODULE E: TWO-DEVICE CLOUD SYNC & SETTINGS (SUPABASE + JSON BACKUP + GEMINI)
+    // ============================================================================
+    function SettingsSyncModule({
+      settings,
+      setSettings,
+      syncBusy,
+      pushToSupabase,
+      pullFromSupabase,
+      routines,
+      setRoutines,
+      workoutHistory,
+      setWorkoutHistory,
+      weightHistory,
+      setWeightHistory,
+      activeWorkoutDraft,
+      setActiveWorkoutDraft,
+      macroTargets,
+      setMacroTargets,
+      mealLibrary,
+      setMealLibrary,
+      dailyNutritionLogs,
+      setDailyNutritionLogs,
+      showToast
+    }) {
+      const fileInputRef = useRef(null);
+
+      const SQL_SNIPPET = `create table if not exists public.user_sync (user_id text primary key, payload jsonb not null, updated_at timestamptz default now());
+alter table public.user_sync enable row level security;
+create policy "Public Sync Access" on public.user_sync for all using (true) with check (true);`;
+
+      const copySqlSnippet = () => {
+        const ta = document.createElement('textarea');
+        ta.value = SQL_SNIPPET;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Copied 3-line Supabase SQL snippet to clipboard!');
+      };
+
+      const handleExportJSON = () => {
+        const fullBackup = {
+          exportedAt: new Date().toISOString(),
+          app: 'USNA Fit & Fuel',
+          routines,
+          workoutHistory,
+          weightHistory,
+          activeWorkoutDraft,
+          macroTargets,
+          mealLibrary,
+          dailyNutritionLogs
+        };
+        const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `usna-fit-fuel-backup-${getTodayISO()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Downloaded JSON backup file!');
+      };
+
+      const handleImportJSONFile = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (parsed.routines) setRoutines(parsed.routines);
+            if (parsed.workoutHistory) setWorkoutHistory(parsed.workoutHistory);
+            if (parsed.weightHistory) setWeightHistory(parsed.weightHistory);
+            if (parsed.activeWorkoutDraft) setActiveWorkoutDraft(parsed.activeWorkoutDraft);
+            if (parsed.macroTargets) setMacroTargets(parsed.macroTargets);
+            if (parsed.mealLibrary) setMealLibrary(parsed.mealLibrary);
+            if (parsed.dailyNutritionLogs) setDailyNutritionLogs(parsed.dailyNutritionLogs);
+            showToast('✅ Restored all workouts, meals & history from JSON!', 'emerald');
+          } catch (err) {
+            showToast('Invalid JSON backup file.', 'amber');
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      return (
+        <div className="space-y-5">
+          {/* Gemini API & Model Configuration */}
+          <div className="bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800 shadow-sm space-y-4">
+            <div>
+              <span className="text-[11px] font-mono uppercase tracking-wider text-gold-500 font-bold">
+                AI Coaching & Structured Tool Execution
+              </span>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                Gemini Agent Configuration
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1">
+                  Gemini API Key (Stored locally on device)
+                </label>
+                <input
+                  type="password"
+                  value={settings.geminiApiKey}
+                  onChange={(e) => setSettings(prev => ({ ...prev, geminiApiKey: e.target.value }))}
+                  placeholder="AIzaSy..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1">
+                  Gemini Model Selector
+                </label>
+                <select
+                  value={settings.geminiModel}
+                  onChange={(e) => setSettings(prev => ({ ...prev, geminiModel: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono font-bold"
+                >
+                  <option value="gemini-4-hydrogen">gemini-4-hydrogen (Default)</option>
+                  <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Supabase Cross-Device Cloud Sync */}
+          <div className="bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-mono uppercase tracking-wider text-gold-500 font-bold">
+                  iPhone PWA ↔ Laptop Sync (GitHub Pages Compatible)
+                </span>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  Supabase REST Cloud Sync
+                </h3>
+              </div>
+              {settings.lastSyncedAt && (
+                <span className="text-xs font-mono text-emerald-400">
+                  Last synced: {settings.lastSyncedAt}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Supabase Project URL</label>
+                <input
+                  type="url"
+                  value={settings.supabaseUrl}
+                  onChange={(e) => setSettings(prev => ({ ...prev, supabaseUrl: e.target.value }))}
+                  placeholder="https://xyz.supabase.co"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Supabase Anon Public Key</label>
+                <input
+                  type="password"
+                  value={settings.supabaseAnonKey}
+                  onChange={(e) => setSettings(prev => ({ ...prev, supabaseAnonKey: e.target.value }))}
+                  placeholder="eyJhbGciOiJIUzI1NiIsIn..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Personal Sync User ID</label>
+                <input
+                  type="text"
+                  value={settings.syncUserId}
+                  onChange={(e) => setSettings(prev => ({ ...prev, syncUserId: e.target.value }))}
+                  placeholder="midn-usna-2026"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-navy-700 text-sm font-mono font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                onClick={() => pushToSupabase(false)}
+                disabled={syncBusy}
+                className="px-4 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-navy-950 font-black text-xs sm:text-sm flex items-center gap-2 transition"
+              >
+                <Icon name="upload" size={16} />
+                <span>{syncBusy ? 'Syncing...' : 'Push Local State to Cloud'}</span>
+              </button>
+              <button
+                onClick={pullFromSupabase}
+                disabled={syncBusy}
+                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-navy-800 hover:bg-navy-700 text-slate-900 dark:text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition"
+              >
+                <Icon name="download" size={16} />
+                <span>Pull Cloud State to Device</span>
+              </button>
+            </div>
+
+            {/* Copyable 3-Line SQL Setup Snippet */}
+            <div className="p-3.5 rounded-xl bg-slate-900 text-slate-200 border border-navy-700 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono text-gold-400 font-bold">
+                  Supabase SQL Editor Setup (3-Line Table Snippet)
+                </span>
+                <button
+                  onClick={copySqlSnippet}
+                  className="px-2.5 py-1 rounded bg-navy-800 hover:bg-gold-500 hover:text-navy-950 text-xs font-mono font-bold flex items-center gap-1 transition"
+                >
+                  <Icon name="copy" size={13} />
+                  <span>Copy SQL</span>
+                </button>
+              </div>
+              <pre className="text-[11px] font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                {SQL_SNIPPET}
+              </pre>
+            </div>
+          </div>
+
+          {/* 1-Click JSON Export / Import */}
+          <div className="bg-white dark:bg-navy-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-navy-800 shadow-sm flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                Local JSON Snapshot Backup
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Export your entire workout history, routines, King Hall logs, and bodyweight data to a portable JSON file.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={handleExportJSON}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 hover:bg-gold-500 hover:text-navy-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition"
+              >
+                <Icon name="download" size={16} />
+                <span>Export JSON</span>
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleImportJSONFile}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 hover:bg-emerald-500 hover:text-navy-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition"
+              >
+                <Icon name="upload" size={16} />
+                <span>Import JSON</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Mount Application
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
